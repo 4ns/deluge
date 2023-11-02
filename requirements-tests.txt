@@ -5,3 +5,4 @@ pytest-cov
 mock
 pre-commit
 pylint
+cryptography
