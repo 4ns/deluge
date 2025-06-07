@@ -21,7 +21,13 @@ from deluge.common import (
     AUTH_LEVEL_READONLY,
     create_localclient_account,
 )
-from deluge.error import AuthenticationRequired, AuthManagerError, BadLoginError
+from deluge.error import (
+    AuthenticationRequired,
+    AuthManagerError,
+    BadLoginError,
+    InvalidHashError,
+)
+from deluge.security import check_password_hash, generate_password_hash
 
 log = logging.getLogger(__name__)
 
@@ -112,8 +118,23 @@ class AuthManager(component.Component):
             if username not in self.__auth:
                 raise BadLoginError('Username does not exist', username)
 
-        if self.__auth[username].password == password:
+        try:
+            verified = check_password_hash(self.__auth[username].password, password)
+        except InvalidHashError as ex:
+            log.warning(
+                'Invalid hash method in password for user %s: %s'
+                ' Falling back to plaintext validation.',
+                username,
+                ex.method,
+            )
+            verified = password == self.__auth[username].password
+
+        if verified:
             # Return the users auth level
+            return self.__auth[username].authlevel
+        #  Fall back to plaintext password for localclient account so that autologin doesn't break.
+        elif username == 'localclient' and self.__auth[username].password == password:
+            log.debug('Localclient account authenticated')
             return self.__auth[username].authlevel
         elif not password and self.__auth[username].password:
             raise AuthenticationRequired('Password is required', username)
@@ -129,13 +150,15 @@ class AuthManager(component.Component):
         return [account.data() for account in self.__auth.values()]
 
     def create_account(self, username, password, authlevel):
+        password_hash = generate_password_hash(password)
+
         if username in self.__auth:
             raise AuthManagerError('Username in use.', username)
         if authlevel not in AUTH_LEVELS_MAPPING:
             raise AuthManagerError('Invalid auth level: %s' % authlevel)
         try:
             self.__auth[username] = Account(
-                username, password, AUTH_LEVELS_MAPPING[authlevel]
+                username, password_hash, AUTH_LEVELS_MAPPING[authlevel]
             )
             self.write_auth_file()
             return True
@@ -144,13 +167,18 @@ class AuthManager(component.Component):
             raise ex
 
     def update_account(self, username, password, authlevel):
+        # If the username is 'localclient', we don't hash the password
+        # to keep compatability with the current localclient autologin.
+        password_hash = None
+        if username != 'localclient':
+            password_hash = generate_password_hash(password)
         if username not in self.__auth:
             raise AuthManagerError('Username not known', username)
         if authlevel not in AUTH_LEVELS_MAPPING:
             raise AuthManagerError('Invalid auth level: %s' % authlevel)
         try:
             self.__auth[username].username = username
-            self.__auth[username].password = password
+            self.__auth[username].password = password_hash or password
             self.__auth[username].authlevel = AUTH_LEVELS_MAPPING[authlevel]
             self.write_auth_file()
             return True
