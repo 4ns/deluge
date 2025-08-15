@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### GTK UI
+
+#### Fixed
+
+- Fix passwords being ignored in certain dialogs such as Tray Password and Connection Manager.
+
 ## 2.2.0 (2025-04-28)
 
 ### Breaking changes
