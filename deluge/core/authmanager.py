@@ -155,7 +155,7 @@ class AuthManager(component.Component):
         if username in self.__auth:
             raise AuthManagerError('Username in use.', username)
         if authlevel not in AUTH_LEVELS_MAPPING:
-            raise AuthManagerError('Invalid auth level: %s' % authlevel)
+            raise AuthManagerError('Invalid auth level: %s' % authlevel, username)
         try:
             self.__auth[username] = Account(
                 username, password_hash, AUTH_LEVELS_MAPPING[authlevel]
@@ -175,7 +175,7 @@ class AuthManager(component.Component):
         if username not in self.__auth:
             raise AuthManagerError('Username not known', username)
         if authlevel not in AUTH_LEVELS_MAPPING:
-            raise AuthManagerError('Invalid auth level: %s' % authlevel)
+            raise AuthManagerError('Invalid auth level: %s' % authlevel, username)
         try:
             self.__auth[username].username = username
             self.__auth[username].password = password_hash or password
@@ -248,6 +248,7 @@ class AuthManager(component.Component):
             # File didn't change, no need for re-parsing's
             return
 
+        file_data = []
         for _filepath in (auth_file, auth_file_bak):
             log.info('Opening %s for load: %s', filename, _filepath)
             try:
@@ -255,7 +256,6 @@ class AuthManager(component.Component):
                     file_data = _file.readlines()
             except OSError as ex:
                 log.warning('Unable to load %s: %s', _filepath, ex)
-                file_data = []
             else:
                 log.info('Successfully loaded %s: %s', filename, _filepath)
                 break
@@ -293,7 +293,7 @@ class AuthManager(component.Component):
                 authlevel = int(authlevel)
             except ValueError:
                 try:
-                    authlevel = AUTH_LEVELS_MAPPING[authlevel]
+                    authlevel = AUTH_LEVELS_MAPPING[str(authlevel)]
                 except KeyError:
                     log.error(
                         'Your auth file is malformed: %r is not a valid auth level',
