@@ -299,7 +299,7 @@ class AuthManager(component.Component):
                         'Your auth file is malformed: %r is not a valid auth level',
                         authlevel,
                     )
-                continue
+                    continue
 
             self.__auth[username] = Account(username, password, authlevel)
 
