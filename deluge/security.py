@@ -88,12 +88,12 @@ def generate_password_hash(
         salt_length (int): The length of the salt to generate. Defaults to 16.
 
         Returns:
-            str: The hashed password in the format 'salt$hash$method'.
+            str: The hashed password in the format '$method$salt$hash'.
 
     """
     salt = gen_salt(salt_length)
     h, actual_method = _hash_internal(method, salt, password)
-    return f'{salt}${h}${actual_method}'
+    return f'${actual_method}${salt}${h}'
 
 
 def check_password_hash(pwhash: str, password: str) -> bool:
@@ -105,7 +105,7 @@ def check_password_hash(pwhash: str, password: str) -> bool:
     may contact users with a link to reset their password.
 
     Args:
-        pwhash (str): The hashed password in the format 'method$salt$hash
+        pwhash (str): The hashed password in the format '$method$salt$hash
         password (str): The plaintext password to check against the hash.
 
     Raises:
@@ -114,12 +114,14 @@ def check_password_hash(pwhash: str, password: str) -> bool:
     Returns:
         bool: True if the password matches the hash, False otherwise.
     """
+    method = None
     try:
-        salt, hashval, method = pwhash.split('$', 2)
+        method, salt, stored_hash = pwhash.lstrip('$').rsplit('$', 2)
+        computed_hash = _hash_internal(method, salt, password)[0]
     except ValueError as ve:
         raise InvalidHashError(
-            'Invalid password hash format. Expected format: "salt$hash$method".',
-            method=None,
+            'Invalid password hash format. Expected format: "$method$salt$hash".',
+            method=method if method else pwhash,
         ) from ve
 
-    return hmac.compare_digest(_hash_internal(method, salt, password)[0], hashval)
+    return hmac.compare_digest(computed_hash, stored_hash)
