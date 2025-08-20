@@ -92,15 +92,15 @@ class AuthManager(component.Component):
             log.info('Auth file changed, reloading it!')
             self.__load_auth_file()
 
-    def authorize(self, username, password):
+    def authorize(self, username: str, password: str) -> int:
         """Authorizes users based on username and password.
 
         Args:
-            username (str): Username
-            password (str): Password
+            username: Username
+            password: Password
 
         Returns:
-            int: The auth level for this user.
+            The auth level for this user.
 
         Raises:
             AuthenticationRequired: If additional details are required to authenticate.
@@ -118,14 +118,17 @@ class AuthManager(component.Component):
             if username not in self.__auth:
                 raise BadLoginError('Username does not exist', username)
 
-        # Fall back to plaintext password for localclient account
-        # so that autologin doesn't break.
-        if username == 'localclient' and self.__auth[username].password == password:
-            log.debug('Localclient account authenticated')
+        stored_password = self.__auth[username].password
+        if not password and stored_password:
+            raise AuthenticationRequired('Password is required', username)
+
+        # Validate with plaintext password for localclient account
+        # to retain autologin compatibility for existing users.
+        if username == 'localclient' and stored_password == password:
             return self.__auth[username].authlevel
 
         try:
-            verified = check_password_hash(self.__auth[username].password, password)
+            verified = check_password_hash(stored_password, password)
         except InvalidHashError as ex:
             log.warning(
                 'Invalid hash method in password for user %s: %s'
@@ -133,14 +136,12 @@ class AuthManager(component.Component):
                 username,
                 ex.method,
             )
-            verified = password == self.__auth[username].password
+            verified = password == stored_password
 
-        if verified:
-            return self.__auth[username].authlevel
-        elif not password and self.__auth[username].password:
-            raise AuthenticationRequired('Password is required', username)
-        else:
+        if not verified:
             raise BadLoginError('Password does not match', username)
+
+        return self.__auth[username].authlevel
 
     def has_account(self, username):
         return username in self.__auth
