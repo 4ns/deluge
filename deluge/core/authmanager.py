@@ -118,6 +118,12 @@ class AuthManager(component.Component):
             if username not in self.__auth:
                 raise BadLoginError('Username does not exist', username)
 
+        # Fall back to plaintext password for localclient account
+        # so that autologin doesn't break.
+        if username == 'localclient' and self.__auth[username].password == password:
+            log.debug('Localclient account authenticated')
+            return self.__auth[username].authlevel
+
         try:
             verified = check_password_hash(self.__auth[username].password, password)
         except InvalidHashError as ex:
@@ -130,11 +136,6 @@ class AuthManager(component.Component):
             verified = password == self.__auth[username].password
 
         if verified:
-            # Return the users auth level
-            return self.__auth[username].authlevel
-        #  Fall back to plaintext password for localclient account so that autologin doesn't break.
-        elif username == 'localclient' and self.__auth[username].password == password:
-            log.debug('Localclient account authenticated')
             return self.__auth[username].authlevel
         elif not password and self.__auth[username].password:
             raise AuthenticationRequired('Password is required', username)
