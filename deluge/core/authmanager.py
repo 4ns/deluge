@@ -243,11 +243,11 @@ class AuthManager(component.Component):
             create_localclient_account()
             return self.__load_auth_file()
 
-        auth_file_modification_time = os.stat(auth_file).st_mtime
+        auth_file_modification_time = os.stat(auth_file).st_mtime_ns
         if self.__auth_modification_time is None:
             self.__auth_modification_time = auth_file_modification_time
         elif self.__auth_modification_time == auth_file_modification_time:
-            # File didn't change, no need for re-parsing's
+            log.debug('Auth file unchanged, skipping re-parsing.')
             return
 
         file_data = []
