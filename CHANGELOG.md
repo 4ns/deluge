@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Removed
+
+- Dropped support for Python 3.8 or older. (Requires Python >= 3.9)
+
 ### GTK UI
 
 #### Fixed
