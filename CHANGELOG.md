@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 - Dropped support for Python 3.8 or older. (Requires Python >= 3.9)
 
+### Core
+
+#### Changed
+
+- Passwords are now stored encrypted with scrypt. A fallback mechanism will still validate existing plaintext passwords in auth files. (#2442)
+
 ### GTK UI
 
 #### Fixed
