@@ -67,15 +67,15 @@ def config_dir(tmp_path):
     yield config_dir
 
 
-@pytest_twisted.async_yield_fixture()
+@pytest_twisted.async_yield_fixture
 async def client(request, config_dir, monkeypatch, listen_port):
     # monkeypatch.setattr(
     #     _client, 'connect', functools.partial(_client.connect, port=listen_port)
     # )
-    try:
-        username, password = get_localhost_auth()
-    except Exception:
-        username, password = '', ''
+    username, password = get_localhost_auth()
+    if not (username and password):
+        raise ValueError('No localhost username or password found')
+
     await _client.connect(
         'localhost',
         port=listen_port,
@@ -144,7 +144,7 @@ def common_fixture(config_dir, request, monkeypatch, listen_port):
         request.cls.fail = fail
 
 
-@pytest_twisted.async_yield_fixture(scope='function')
+@pytest_twisted.async_yield_fixture
 async def component():
     """Verify component registry is clean, and clean up after test."""
     if len(_component._ComponentRegistry.components) != 0:
@@ -161,7 +161,7 @@ async def component():
     _component._ComponentRegistry.dependents.clear()
 
 
-@pytest_twisted.async_yield_fixture(scope='function')
+@pytest_twisted.async_yield_fixture
 async def base_fixture(common_fixture, component, request):
     """This fixture is autoused on all tests that subclass BaseTestCase"""
     self = request.instance
