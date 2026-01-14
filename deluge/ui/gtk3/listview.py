@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007, 2008 Andrew Resch <andrewresch@gmail.com>
 #
@@ -7,20 +6,18 @@
 # See LICENSE for more details.
 #
 
-from __future__ import unicode_literals
-
 import logging
 
 from gi.repository import GObject, Gtk
 
-from deluge.common import PY2, decode_bytes
+from deluge.common import decode_bytes
 
 from .common import cmp, load_pickled_state_file, save_pickled_state_file
 
 log = logging.getLogger(__name__)
 
 
-class ListViewColumnState(object):
+class ListViewColumnState:
     """Class used for saving/loading column state."""
 
     def __init__(self, name, position, width, visible, sort, sort_order):
@@ -32,13 +29,13 @@ class ListViewColumnState(object):
         self.sort_order = sort_order
 
 
-class ListView(object):
+class ListView:
     """ListView is used to make custom GtkTreeViews.  It supports the adding
     and removing of columns, creating a menu for a column toggle list and
     support for 'status_field's which are used while updating the columns data.
     """
 
-    class ListViewColumn(object):
+    class ListViewColumn:
         """Holds information regarding a column in the ListView"""
 
         def __init__(self, name, column_indices):
@@ -66,22 +63,20 @@ class ListView(object):
             self.pixbuf_index = 0
             self.data_func = None
 
-    class TreeviewColumn(Gtk.TreeViewColumn, object):
+    class TreeviewColumn(Gtk.TreeViewColumn):
         """
-            TreeViewColumn does not signal right-click events, and we need them
-            This subclass is equivalent to TreeViewColumn, but it signals these events
+        TreeViewColumn does not signal right-click events, and we need them
+        This subclass is equivalent to TreeViewColumn, but it signals these events
 
-            Most of the code of this class comes from Quod Libet (http://www.sacredchao.net/quodlibet)
+        Most of the code of this class comes from Quod Libet (http://www.sacredchao.net/quodlibet)
         """
 
         __gsignals__ = {
-            'button-press-event'
-            if not PY2
-            else b'button-press-event': (GObject.SIGNAL_RUN_LAST, None, (object,))
+            'button-press-event': (GObject.SignalFlags.RUN_LAST, None, (object,))
         }
 
         def __init__(self, title=None, cell_renderer=None, **args):
-            """ Constructor, see Gtk.TreeViewColumn """
+            """Constructor, see Gtk.TreeViewColumn"""
             Gtk.TreeViewColumn.__init__(self, title, cell_renderer, **args)
             label = Gtk.Label(label=title)
             self.set_widget(label)
@@ -112,7 +107,7 @@ class ListView(object):
             Gtk.TreeViewColumn.set_visible(self, visible)
             if self.data_func:
                 if not visible:
-                    # Set data function to None to prevent unecessary calls when column is hidden
+                    # Set data function to None to prevent unnecessary calls when column is hidden
                     self.set_cell_data_func(self.cell_renderer, None, func_data=None)
                 else:
                     self.set_cell_data_func(
@@ -144,7 +139,6 @@ class ListView(object):
         self.liststore = None
         self.model_filter = None
 
-        self.treeview.set_rules_hint(True)
         self.treeview.set_reorderable(False)
         self.treeview.set_rubber_banding(True)  # Enable mouse multi-row selection.
         self.treeview.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
@@ -281,7 +275,7 @@ class ListView(object):
 
     def save_state(self, filename):
         """Saves the listview state (column positions and visibility) to
-            filename."""
+        filename."""
         # A list of ListViewColumnStates
         state = []
 
@@ -627,8 +621,7 @@ class ListView(object):
         unique=False,
         default_sort=False,
     ):
-        """Add a text column to the listview.  Only the header name is required.
-        """
+        """Add a text column to the listview.  Only the header name is required."""
         render = Gtk.CellRendererText()
         self.add_column(
             header,
@@ -789,7 +782,7 @@ class ListView(object):
 
         return True
 
-    def on_keypress_search_by_name(self, model, column, key, _iter):
+    def on_keypress_search_by_name(self, model, column, key, _iter, *search_data):
         torrent_name_col = self.columns[_('Name')].column_indices[1]
         return not model[_iter][torrent_name_col].lower().startswith(key.lower())
 

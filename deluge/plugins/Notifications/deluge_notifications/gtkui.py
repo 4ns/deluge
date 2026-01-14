@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009-2010 Pedro Algarvio <pedro@algarvio.me>
 #
@@ -11,8 +10,6 @@
 # the additional special exception to link portions of this program with the OpenSSL library.
 # See LICENSE for more details.
 #
-
-from __future__ import unicode_literals
 
 import logging
 from os.path import basename
@@ -42,7 +39,7 @@ except ImportError:
 
 try:
     require_version('Notify', '0.7')
-    from gi.repository import Notify, GLib
+    from gi.repository import GLib, Notify
 except (ValueError, ImportError):
     POPUP_AVAILABLE = False
 else:

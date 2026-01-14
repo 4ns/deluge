@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2013 Bro <bro.development@gmail.com>
 #
@@ -8,15 +7,13 @@
 # See LICENSE for more details.
 #
 
-from __future__ import division, print_function, unicode_literals
-
 import os
 import warnings
 
 from gi.repository import Gdk, GObject, Gtk
 from gi.repository.GObject import SignalFlags
 
-from deluge.common import PY2, resource_filename
+from deluge.common import resource_filename
 from deluge.path_chooser_common import get_completion_paths
 
 # Filter the pygobject signal warning:
@@ -64,8 +61,7 @@ def path_without_trailing_path_sep(path):
     return path
 
 
-class ValueList(object):
-
+class ValueList:
     paths_without_trailing_path_sep = False
 
     def get_values_count(self):
@@ -176,7 +172,7 @@ class ValueList(object):
         """
         for i, row in enumerate(self.tree_store):
             if row[0] == value:
-                self.treeview.set_cursor((i))
+                self.treeview.set_cursor(i)
                 return
         # The value was not found
         if select_first:
@@ -326,20 +322,20 @@ class StoredValuesList(ValueList):
         self.paths_without_trailing_path_sep = False
 
         # Add signal handlers
-        self.signal_handlers[
-            'on_stored_values_treeview_mouse_button_press_event'
-        ] = self.on_treeview_mouse_button_press_event
+        self.signal_handlers['on_stored_values_treeview_mouse_button_press_event'] = (
+            self.on_treeview_mouse_button_press_event
+        )
 
-        self.signal_handlers[
-            'on_stored_values_treeview_key_press_event'
-        ] = self.on_stored_values_treeview_key_press_event
-        self.signal_handlers[
-            'on_stored_values_treeview_key_release_event'
-        ] = self.on_stored_values_treeview_key_release_event
+        self.signal_handlers['on_stored_values_treeview_key_press_event'] = (
+            self.on_stored_values_treeview_key_press_event
+        )
+        self.signal_handlers['on_stored_values_treeview_key_release_event'] = (
+            self.on_stored_values_treeview_key_release_event
+        )
 
-        self.signal_handlers[
-            'on_cellrenderertext_edited'
-        ] = self.on_cellrenderertext_edited
+        self.signal_handlers['on_cellrenderertext_edited'] = (
+            self.on_cellrenderertext_edited
+        )
 
     def on_cellrenderertext_edited(self, cellrenderertext, path, new_text):
         """
@@ -374,7 +370,7 @@ class StoredValuesList(ValueList):
         """
         # This is left click
         if event.button != 3:
-            super(StoredValuesList, self).on_treeview_mouse_button_press_event(
+            super().on_treeview_mouse_button_press_event(
                 treeview, event, double_click=True
             )
             return False
@@ -390,9 +386,9 @@ class StoredValuesList(ValueList):
             treeview.set_cursor(path, col, 0)
 
             self.path_list_popup = Gtk.Menu()
-            menuitem_edit = Gtk.MenuItem.new_with_label('Edit path')
+            menuitem_edit = Gtk.MenuItem.new_with_label(_('Edit path'))
             self.path_list_popup.append(menuitem_edit)
-            menuitem_remove = Gtk.MenuItem.new_with_label('Remove path')
+            menuitem_remove = Gtk.MenuItem.new_with_label(_('Remove path'))
             self.path_list_popup.append(menuitem_remove)
 
             def on_edit_clicked(widget, path):
@@ -412,9 +408,7 @@ class StoredValuesList(ValueList):
         PathChooserPopup.popup(self)
 
     def on_stored_values_treeview_key_press_event(self, widget, event):
-        super(StoredValuesList, self).on_value_list_treeview_key_press_event(
-            widget, event
-        )
+        super().on_value_list_treeview_key_press_event(widget, event)
         # Prevent the default event handler to move the cursor in the list
         if key_is_up_or_down(event.keyval):
             return True
@@ -453,9 +447,7 @@ class StoredValuesList(ValueList):
                 return True
             # Add current value to saved list
             elif is_ascii_value(keyval, 's'):
-                super(
-                    PathChooserComboBox, self
-                ).add_current_value_to_saved_list()  # pylint: disable=bad-super-call
+                super(PathChooserComboBox, self).add_current_value_to_saved_list()  # pylint: disable=bad-super-call
                 return True
             # Edit selected value
             elif is_ascii_value(keyval, 'e'):
@@ -471,17 +463,17 @@ class CompletionList(ValueList):
         self.completion_scrolled_window = self.builder.get_object(
             'completion_scrolled_window'
         )
-        self.signal_handlers[
-            'on_completion_treeview_key_press_event'
-        ] = self.on_completion_treeview_key_press_event
-        self.signal_handlers[
-            'on_completion_treeview_motion_notify_event'
-        ] = self.on_completion_treeview_motion_notify_event
+        self.signal_handlers['on_completion_treeview_key_press_event'] = (
+            self.on_completion_treeview_key_press_event
+        )
+        self.signal_handlers['on_completion_treeview_motion_notify_event'] = (
+            self.on_completion_treeview_motion_notify_event
+        )
 
         # Add super class signal handler
-        self.signal_handlers['on_completion_treeview_mouse_button_press_event'] = super(
-            CompletionList, self
-        ).on_treeview_mouse_button_press_event
+        self.signal_handlers['on_completion_treeview_mouse_button_press_event'] = (
+            super().on_treeview_mouse_button_press_event
+        )
 
     def reduce_values(self, prefix):
         """
@@ -499,9 +491,7 @@ class CompletionList(ValueList):
         self.add_values(matching_values, clear=True)
 
     def on_completion_treeview_key_press_event(self, widget, event):
-        ret = super(CompletionList, self).on_value_list_treeview_key_press_event(
-            widget, event
-        )
+        ret = super().on_value_list_treeview_key_press_event(widget, event)
         if ret:
             return ret
         keyval = event.keyval
@@ -529,7 +519,7 @@ class CompletionList(ValueList):
             self.handle_list_scroll(path=path[0], _next=None)
 
 
-class PathChooserPopup(object):
+class PathChooserPopup:
     """This creates the popop window for the ComboEntry."""
 
     def __init__(self, min_visible_rows, max_visible_rows, popup_alignment_widget):
@@ -538,9 +528,8 @@ class PathChooserPopup(object):
         self.set_max_popup_rows(max_visible_rows)
         self.popup_window.realize()
         self.alignment_widget = popup_alignment_widget
-        self.popup_buttonbox = (
-            None
-        )  # If set, the height of this widget is the minimum height
+        # If set, the height of this widget is the minimum height
+        self.popup_buttonbox = None
 
     def popup(self):
         """Make the popup visible."""
@@ -765,23 +754,23 @@ class StoredValuesPopup(StoredValuesList, PathChooserPopup):
         self.popup_buttonbox = self.builder.get_object('buttonbox')
 
         # Add signal handlers
-        self.signal_handlers[
-            'on_buttonbox_key_press_event'
-        ] = self.on_buttonbox_key_press_event
-        self.signal_handlers[
-            'on_stored_values_treeview_scroll_event'
-        ] = self.on_scroll_event
-        self.signal_handlers[
-            'on_button_toggle_dropdown_scroll_event'
-        ] = self.on_scroll_event
+        self.signal_handlers['on_buttonbox_key_press_event'] = (
+            self.on_buttonbox_key_press_event
+        )
+        self.signal_handlers['on_stored_values_treeview_scroll_event'] = (
+            self.on_scroll_event
+        )
+        self.signal_handlers['on_button_toggle_dropdown_scroll_event'] = (
+            self.on_scroll_event
+        )
         self.signal_handlers['on_entry_text_scroll_event'] = self.on_scroll_event
-        self.signal_handlers[
-            'on_stored_values_popup_window_focus_out_event'
-        ] = self.on_stored_values_popup_window_focus_out_event
+        self.signal_handlers['on_stored_values_popup_window_focus_out_event'] = (
+            self.on_stored_values_popup_window_focus_out_event
+        )
         # For when clicking outside the popup
-        self.signal_handlers[
-            'on_stored_values_popup_window_button_press_event'
-        ] = self.on_popup_window_button_press_event
+        self.signal_handlers['on_stored_values_popup_window_button_press_event'] = (
+            self.on_popup_window_button_press_event
+        )
 
         # Buttons for manipulating the list
         self.signal_handlers['on_button_add_clicked'] = self.on_button_add_clicked
@@ -789,12 +778,12 @@ class StoredValuesPopup(StoredValuesList, PathChooserPopup):
         self.signal_handlers['on_button_remove_clicked'] = self.on_button_remove_clicked
         self.signal_handlers['on_button_up_clicked'] = self.on_button_up_clicked
         self.signal_handlers['on_button_down_clicked'] = self.on_button_down_clicked
-        self.signal_handlers[
-            'on_button_default_clicked'
-        ] = self.on_button_default_clicked
-        self.signal_handlers[
-            'on_button_properties_clicked'
-        ] = self.path_entry._on_button_properties_clicked
+        self.signal_handlers['on_button_default_clicked'] = (
+            self.on_button_default_clicked
+        )
+        self.signal_handlers['on_button_properties_clicked'] = (
+            self.path_entry._on_button_properties_clicked
+        )
 
     def popup(self):
         """
@@ -920,17 +909,17 @@ class PathCompletionPopup(CompletionList, PathChooserPopup):
         CompletionList.__init__(self)
 
         # Add signal handlers
-        self.signal_handlers[
-            'on_completion_treeview_scroll_event'
-        ] = self.on_scroll_event
-        self.signal_handlers[
-            'on_completion_popup_window_focus_out_event'
-        ] = self.on_completion_popup_window_focus_out_event
+        self.signal_handlers['on_completion_treeview_scroll_event'] = (
+            self.on_scroll_event
+        )
+        self.signal_handlers['on_completion_popup_window_focus_out_event'] = (
+            self.on_completion_popup_window_focus_out_event
+        )
 
         # For when clicking outside the popup
-        self.signal_handlers[
-            'on_completion_popup_window_button_press_event'
-        ] = self.on_popup_window_button_press_event
+        self.signal_handlers['on_completion_popup_window_button_press_event'] = (
+            self.on_popup_window_button_press_event
+        )
 
     def popup(self):
         """
@@ -984,7 +973,7 @@ class PathCompletionPopup(CompletionList, PathChooserPopup):
         return True
 
 
-class PathAutoCompleter(object):
+class PathAutoCompleter:
     def __init__(self, builder, path_entry, max_visible_rows):
         self.completion_popup = PathCompletionPopup(
             builder, path_entry, max_visible_rows
@@ -995,15 +984,15 @@ class PathAutoCompleter(object):
         self.auto_complete_enabled = True
         self.signal_handlers = self.completion_popup.signal_handlers
 
-        self.signal_handlers[
-            'on_completion_popup_window_key_press_event'
-        ] = self.on_completion_popup_window_key_press_event
-        self.signal_handlers[
-            'on_entry_text_delete_text'
-        ] = self.on_entry_text_delete_text
-        self.signal_handlers[
-            'on_entry_text_insert_text'
-        ] = self.on_entry_text_insert_text
+        self.signal_handlers['on_completion_popup_window_key_press_event'] = (
+            self.on_completion_popup_window_key_press_event
+        )
+        self.signal_handlers['on_entry_text_delete_text'] = (
+            self.on_entry_text_delete_text
+        )
+        self.signal_handlers['on_entry_text_insert_text'] = (
+            self.on_entry_text_insert_text
+        )
         self.accelerator_string = Gtk.accelerator_name(Gdk.KEY_Tab, 0)
 
     def on_entry_text_insert_text(self, entry, new_text, new_text_length, position):
@@ -1105,11 +1094,8 @@ class PathAutoCompleter(object):
 
 
 class PathChooserComboBox(Gtk.Box, StoredValuesPopup, GObject.GObject):
-
     __gsignals__ = {
-        signal
-        if not PY2
-        else signal.encode(): (SignalFlags.RUN_FIRST, GObject.TYPE_NONE, (object,))
+        signal: (SignalFlags.RUN_FIRST, GObject.TYPE_NONE, (object,))
         for signal in [
             'text-changed',
             'accelerator-set',
@@ -1415,7 +1401,7 @@ class PathChooserComboBox(Gtk.Box, StoredValuesPopup, GObject.GObject):
         self.set_text(self.get_text())
 
     def _on_entry_combobox_hbox_realize(self, widget):
-        """ Must do this when the widget is realized """
+        """Must do this when the widget is realized"""
         self.set_filechooser_button_visible(self.filechooser_visible)
         self.set_path_entry_visible(self.path_entry_visible)
 
@@ -1467,7 +1453,7 @@ class PathChooserComboBox(Gtk.Box, StoredValuesPopup, GObject.GObject):
                 )
                 return True
             elif is_ascii_value(keyval, 's'):
-                super(PathChooserComboBox, self).add_current_value_to_saved_list()
+                super().add_current_value_to_saved_list()
                 return True
             elif is_ascii_value(keyval, 'd'):
                 # Set the default value in the text entry
@@ -1697,7 +1683,7 @@ if __name__ == '__main__':
     box1 = Gtk.Box.new(Gtk.Orientation.VERTICAL, spacing=0)
 
     def get_resource2(filename):
-        return '%s/glade/%s' % (os.path.abspath(os.path.dirname(sys.argv[0])), filename)
+        return f'{os.path.abspath(os.path.dirname(sys.argv[0]))}/glade/{filename}'
 
     # Override get_resource which fetches from deluge install
     # get_resource = get_resource2

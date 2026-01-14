@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007-2009 Andrew Resch <andrewresch@gmail.com>
 #
@@ -14,11 +13,12 @@ Attributes:
 
 """
 
-from __future__ import division, unicode_literals
-
 import logging
 import os
 import socket
+import time
+from typing import Optional
+from urllib.parse import urlparse
 
 from twisted.internet.defer import Deferred, DeferredList
 
@@ -33,18 +33,6 @@ from deluge.event import (
     TorrentStateChangedEvent,
     TorrentTrackerStatusEvent,
 )
-
-try:
-    from urllib.parse import urlparse
-except ImportError:
-    # PY2 fallback
-    from urlparse import urlparse  # pylint: disable=ungrouped-imports
-
-try:
-    from future_builtins import zip
-except ImportError:
-    # Ignore on Py3.
-    pass
 
 log = logging.getLogger(__name__)
 
@@ -94,7 +82,7 @@ def convert_lt_files(files):
     """Indexes and decodes files from libtorrent get_files().
 
     Args:
-        files (list): The libtorrent torrent files.
+        files (file_storage): The libtorrent torrent files.
 
     Returns:
         list of dict: The files.
@@ -109,18 +97,18 @@ def convert_lt_files(files):
             }
     """
     filelist = []
-    for index, _file in enumerate(files):
+    for index in range(files.num_files()):
         try:
-            file_path = _file.path.decode('utf8')
+            file_path = files.file_path(index).decode('utf8')
         except AttributeError:
-            file_path = _file.path
+            file_path = files.file_path(index)
 
         filelist.append(
             {
                 'index': index,
                 'path': file_path.replace('\\', '/'),
-                'size': _file.size,
-                'offset': _file.offset,
+                'size': files.file_size(index),
+                'offset': files.file_offset(index),
             }
         )
 
@@ -161,7 +149,7 @@ class TorrentOptions(dict):
     """
 
     def __init__(self):
-        super(TorrentOptions, self).__init__()
+        super().__init__()
         config = ConfigManager('core.conf').config
         options_conf_map = {
             'add_paused': 'add_paused',
@@ -191,14 +179,14 @@ class TorrentOptions(dict):
         self['seed_mode'] = False
 
 
-class TorrentError(object):
+class TorrentError:
     def __init__(self, error_message, was_paused=False, restart_to_resume=False):
         self.error_message = error_message
         self.was_paused = was_paused
         self.restart_to_resume = restart_to_resume
 
 
-class Torrent(object):
+class Torrent:
     """Torrent holds information about torrents added to the libtorrent session.
 
     Args:
@@ -248,9 +236,10 @@ class Torrent(object):
         self.handle = handle
 
         self.magnet = magnet
-        self.status = self.handle.status()
+        self._status: Optional['lt.torrent_status'] = None
+        self._status_last_update: float = 0.0
 
-        self.torrent_info = self.handle.get_torrent_info()
+        self.torrent_info = self.handle.torrent_file()
         self.has_metadata = self.status.has_metadata
 
         self.options = TorrentOptions()
@@ -266,6 +255,9 @@ class Torrent(object):
             self.is_finished = False
             self.filename = filename
 
+        if not self.filename:
+            self.filename = ''
+
         self.forced_error = None
         self.statusmsg = None
         self.state = None
@@ -278,13 +270,24 @@ class Torrent(object):
         self.prev_status = {}
         self.waiting_on_folder_rename = []
 
-        self.update_status(self.handle.status())
         self._create_status_funcs()
         self.set_options(self.options)
         self.update_state()
 
         if log.isEnabledFor(logging.DEBUG):
             log.debug('Torrent object created.')
+
+    def _set_handle_flags(self, flag: lt.torrent_flags, set_flag: bool):
+        """set or unset a flag to the lt handle
+
+        Args:
+            flag (lt.torrent_flags): the flag to set/unset
+            set_flag (bool): True for setting the flag, False for unsetting it
+        """
+        if set_flag:
+            self.handle.set_flags(flag)
+        else:
+            self.handle.unset_flags(flag)
 
     def on_metadata_received(self):
         """Process the metadata received alert for this torrent"""
@@ -370,7 +373,7 @@ class Torrent(object):
         """Sets maximum download speed for this torrent.
 
         Args:
-            m_up_speed (float): Maximum download speed in KiB/s.
+            m_down_speed (float): Maximum download speed in KiB/s.
         """
         self.options['max_download_speed'] = m_down_speed
         if m_down_speed < 0:
@@ -402,7 +405,7 @@ class Torrent(object):
             return
 
         # A list of priorities for each piece in the torrent
-        priorities = self.handle.piece_priorities()
+        priorities = self.handle.get_piece_priorities()
 
         def get_file_piece(idx, byte_offset):
             return self.torrent_info.map_file(idx, byte_offset, 0).piece
@@ -428,14 +431,17 @@ class Torrent(object):
         # Setting the priorites for all the pieces of this torrent
         self.handle.prioritize_pieces(priorities)
 
-    def set_sequential_download(self, set_sequencial):
+    def set_sequential_download(self, sequential):
         """Sets whether to download the pieces of the torrent in order.
 
         Args:
-            set_sequencial (bool): Enable sequencial downloading.
+            sequential (bool): Enable sequential downloading.
         """
-        self.options['sequential_download'] = set_sequencial
-        self.handle.set_sequential_download(set_sequencial)
+        self.options['sequential_download'] = sequential
+        self._set_handle_flags(
+            flag=lt.torrent_flags.sequential_download,
+            set_flag=sequential,
+        )
 
     def set_auto_managed(self, auto_managed):
         """Set auto managed mode, i.e. will be started or queued automatically.
@@ -445,7 +451,10 @@ class Torrent(object):
         """
         self.options['auto_managed'] = auto_managed
         if not (self.status.paused and not self.status.auto_managed):
-            self.handle.auto_managed(auto_managed)
+            self._set_handle_flags(
+                flag=lt.torrent_flags.auto_managed,
+                set_flag=auto_managed,
+            )
             self.update_state()
 
     def set_super_seeding(self, super_seeding):
@@ -455,7 +464,10 @@ class Torrent(object):
             super_seeding (bool): Enable super seeding.
         """
         self.options['super_seeding'] = super_seeding
-        self.handle.super_seeding(super_seeding)
+        self._set_handle_flags(
+            flag=lt.torrent_flags.super_seeding,
+            set_flag=super_seeding,
+        )
 
     def set_stop_ratio(self, stop_ratio):
         """The seeding ratio to stop (or remove) the torrent at.
@@ -516,7 +528,7 @@ class Torrent(object):
             self.handle.prioritize_files(file_priorities)
         else:
             log.debug('Unable to set new file priorities.')
-            file_priorities = self.handle.file_priorities()
+            file_priorities = self.handle.get_file_priorities()
 
         if 0 in self.options['file_priorities']:
             # Previously marked a file 'skip' so check for any 0's now >0.
@@ -566,7 +578,7 @@ class Torrent(object):
             trackers (list of dicts): A list of trackers.
         """
         if trackers is None:
-            self.trackers = [tracker for tracker in self.handle.trackers()]
+            self.trackers = list(self.handle.trackers())
             self.tracker_host = None
             return
 
@@ -631,7 +643,7 @@ class Torrent(object):
 
     def update_state(self):
         """Updates the state, based on libtorrent's torrent state"""
-        status = self.handle.status()
+        status = self.get_lt_status()
         session_paused = component.get('Core').session.is_paused()
         old_state = self.state
         self.set_status_message()
@@ -643,7 +655,10 @@ class Torrent(object):
         elif status_error:
             self.state = 'Error'
             # auto-manage status will be reverted upon resuming.
-            self.handle.auto_managed(False)
+            self._set_handle_flags(
+                flag=lt.torrent_flags.auto_managed,
+                set_flag=False,
+            )
             self.set_status_message(decode_bytes(status_error))
         elif status.moving_storage:
             self.state = 'Moving'
@@ -696,8 +711,11 @@ class Torrent(object):
             restart_to_resume (bool, optional): Prevent resuming clearing the error, only restarting
                 session can resume.
         """
-        status = self.handle.status()
-        self.handle.auto_managed(False)
+        status = self.get_lt_status()
+        self._set_handle_flags(
+            flag=lt.torrent_flags.auto_managed,
+            set_flag=False,
+        )
         self.forced_error = TorrentError(message, status.paused, restart_to_resume)
         if not status.paused:
             self.handle.pause()
@@ -711,7 +729,10 @@ class Torrent(object):
             log.error('Restart deluge to clear this torrent error')
 
         if not self.forced_error.was_paused and self.options['auto_managed']:
-            self.handle.auto_managed(True)
+            self._set_handle_flags(
+                flag=lt.torrent_flags.auto_managed,
+                set_flag=True,
+            )
         self.forced_error = None
         self.set_status_message('OK')
         if update_state:
@@ -835,7 +856,7 @@ class Torrent(object):
                     'client': client,
                     'country': country,
                     'down_speed': peer.payload_down_speed,
-                    'ip': '%s:%s' % (peer.ip[0], peer.ip[1]),
+                    'ip': f'{peer.ip[0]}:{peer.ip[1]}',
                     'progress': peer.progress,
                     'seed': peer.flags & peer.seed,
                     'up_speed': peer.payload_up_speed,
@@ -854,7 +875,7 @@ class Torrent(object):
 
     def get_file_priorities(self):
         """Return the file priorities"""
-        if not self.handle.has_metadata():
+        if not self.handle.status().has_metadata:
             return []
 
         if not self.options['file_priorities']:
@@ -871,11 +892,18 @@ class Torrent(object):
         """
         if not self.has_metadata:
             return []
-        return [
-            progress / _file.size if _file.size else 0.0
-            for progress, _file in zip(
+
+        try:
+            files_progresses = zip(
                 self.handle.file_progress(), self.torrent_info.files()
             )
+        except Exception:
+            # Handle libtorrent >=2.0.0,<=2.0.4 file_progress error
+            files_progresses = zip(iter(lambda: 0, 1), self.torrent_info.files())
+
+        return [
+            progress / _file.size if _file.size else 0.0
+            for progress, _file in files_progresses
         ]
 
     def get_tracker_host(self):
@@ -900,7 +928,7 @@ class Torrent(object):
                 # Check if hostname is an IP address and just return it if that's the case
                 try:
                     socket.inet_aton(host)
-                except socket.error:
+                except OSError:
                     pass
                 else:
                     # This is an IP address because an exception wasn't raised
@@ -936,10 +964,10 @@ class Torrent(object):
 
         if self.has_metadata:
             # Use the top-level folder as torrent name.
-            filename = decode_bytes(self.torrent_info.file_at(0).path)
+            filename = decode_bytes(self.torrent_info.files().file_path(0))
             name = filename.replace('\\', '/', 1).split('/', 1)[0]
         else:
-            name = decode_bytes(self.handle.name())
+            name = decode_bytes(self.handle.status().name)
 
         if not name:
             name = self.torrent_id
@@ -991,12 +1019,14 @@ class Torrent(object):
                 call to get_status based on the session_id
             update (bool): If True the status will be updated from libtorrent
                 if False, the cached values will be returned
+            all_keys (bool): If True return all keys while ignoring the keys param
+                if False, return only the requested keys
 
         Returns:
             dict: a dictionary of the status keys and their values
         """
         if update:
-            self.update_status(self.handle.status())
+            self.get_lt_status()
 
         if all_keys:
             keys = list(self.status_funcs)
@@ -1026,13 +1056,35 @@ class Torrent(object):
 
         return status_dict
 
-    def update_status(self, status):
+    def get_lt_status(self) -> 'lt.torrent_status':
+        """Get the torrent status fresh, not from cache.
+
+        This should be used when a guaranteed fresh status is needed rather than
+        `torrent.handle.status()` because it will update the cache as well.
+        """
+        self.status = self.handle.status()
+        return self.status
+
+    @property
+    def status(self) -> 'lt.torrent_status':
+        """Cached copy of the libtorrent status for this torrent.
+
+        If it has not been updated within the last five seconds, it will be
+        automatically refreshed.
+        """
+        if self._status_last_update < (time.time() - 5):
+            self.status = self.handle.status()
+        return self._status
+
+    @status.setter
+    def status(self, status: 'lt.torrent_status') -> None:
         """Updates the cached status.
 
         Args:
-            status (libtorrent.torrent_status): a libtorrent torrent status
+            status: a libtorrent torrent status
         """
-        self.status = status
+        self._status = status
+        self._status_last_update = time.time()
 
     def _create_status_funcs(self):
         """Creates the functions for getting torrent status"""
@@ -1086,9 +1138,8 @@ class Torrent(object):
             'download_location': lambda: self.options['download_location'],
             'seeds_peers_ratio': lambda: -1.0
             if self.status.num_incomplete == 0
-            else (  # Use -1.0 to signify infinity
-                self.status.num_complete / self.status.num_incomplete
-            ),
+            # Use -1.0 to signify infinity
+            else (self.status.num_complete / self.status.num_incomplete),
             'seed_rank': lambda: self.status.seed_rank,
             'state': lambda: self.state,
             'stop_at_ratio': lambda: self.options['stop_at_ratio'],
@@ -1154,7 +1205,10 @@ class Torrent(object):
 
         """
         # Turn off auto-management so the torrent will not be unpaused by lt queueing
-        self.handle.auto_managed(False)
+        self._set_handle_flags(
+            flag=lt.torrent_flags.auto_managed,
+            set_flag=False,
+        )
         if self.state == 'Error':
             log.debug('Unable to pause torrent while in Error state')
         elif self.status.paused:
@@ -1189,7 +1243,10 @@ class Torrent(object):
         else:
             # Check if torrent was originally being auto-managed.
             if self.options['auto_managed']:
-                self.handle.auto_managed(True)
+                self._set_handle_flags(
+                    flag=lt.torrent_flags.auto_managed,
+                    set_flag=True,
+                )
             try:
                 self.handle.resume()
             except RuntimeError as ex:
@@ -1212,9 +1269,59 @@ class Torrent(object):
             bool: True is successful, otherwise False
         """
         try:
-            self.handle.connect_peer((peer_ip, peer_port), 0)
-        except RuntimeError as ex:
+            self.handle.connect_peer((peer_ip, int(peer_port)), 0)
+        except (RuntimeError, ValueError) as ex:
             log.debug('Unable to connect to peer: %s', ex)
+            return False
+        return True
+
+    def set_ssl_certificate(
+        self,
+        certificate_path: str,
+        private_key_path: str,
+        dh_params_path: str,
+        password: str = '',
+    ):
+        """add a peer to the torrent
+
+        Args:
+            certificate_path(str) : Path to the PEM-encoded x509 certificate
+            private_key_path(str) : Path to the PEM-encoded private key
+            dh_params_path(str) : Path to the PEM-encoded Diffie-Hellman parameter
+            password(str) : (Optional) password used to decrypt the private key
+
+        Returns:
+            bool: True is successful, otherwise False
+        """
+        try:
+            self.handle.set_ssl_certificate(
+                certificate_path, private_key_path, dh_params_path, password
+            )
+        except RuntimeError as ex:
+            log.error('Unable to set ssl certificate from file: %s', ex)
+            return False
+        return True
+
+    def set_ssl_certificate_buffer(
+        self,
+        certificate: str,
+        private_key: str,
+        dh_params: str,
+    ):
+        """add a peer to the torrent
+
+        Args:
+            certificate(str) : PEM-encoded content of the x509 certificate
+            private_key(str) : PEM-encoded content of the private key
+            dh_params(str) : PEM-encoded content of the Diffie-Hellman parameters
+
+        Returns:
+            bool: True is successful, otherwise False
+        """
+        try:
+            self.handle.set_ssl_certificate_buffer(certificate, private_key, dh_params)
+        except RuntimeError as ex:
+            log.error('Unable to set ssl certificate from buffer: %s', ex)
             return False
         return True
 
@@ -1293,7 +1400,7 @@ class Torrent(object):
             try:
                 with open(filepath, 'wb') as save_file:
                     save_file.write(filedump)
-            except IOError as ex:
+            except OSError as ex:
                 log.error('Unable to save torrent file to: %s', ex)
 
         filepath = os.path.join(get_config_dir(), 'state', self.torrent_id + '.torrent')
@@ -1316,7 +1423,7 @@ class Torrent(object):
         torrent_files = [
             os.path.join(get_config_dir(), 'state', self.torrent_id + '.torrent')
         ]
-        if delete_copies:
+        if delete_copies and self.filename:
             torrent_files.append(
                 os.path.join(self.config['torrentfiles_location'], self.filename)
             )
@@ -1340,8 +1447,8 @@ class Torrent(object):
     def scrape_tracker(self):
         """Scrape the tracker
 
-         A scrape request queries the tracker for statistics such as total
-         number of incomplete peers, complete peers, number of downloads etc.
+        A scrape request queries the tracker for statistics such as total
+        number of incomplete peers, complete peers, number of downloads etc.
         """
         try:
             self.handle.scrape_tracker()
@@ -1388,7 +1495,7 @@ class Torrent(object):
         This basically does a file rename on all of the folders children.
 
         Args:
-            folder (str): The orignal folder name
+            folder (str): The original folder name
             new_folder (str): The new folder name
 
         Returns:
@@ -1486,20 +1593,18 @@ class Torrent(object):
                 self.status.pieces, self.handle.piece_availability()
             ):
                 if piece:
-                    pieces.append(3)  # Completed.
+                    # Completed.
+                    pieces.append(3)
                 elif avail_piece:
-                    pieces.append(
-                        1
-                    )  # Available, just not downloaded nor being downloaded.
+                    # Available, just not downloaded nor being downloaded.
+                    pieces.append(1)
                 else:
-                    pieces.append(
-                        0
-                    )  # Missing, no known peer with piece, or not asked for yet.
+                    # Missing, no known peer with piece, or not asked for yet.
+                    pieces.append(0)
 
             for peer_info in self.handle.get_peer_info():
                 if peer_info.downloading_piece_index >= 0:
-                    pieces[
-                        peer_info.downloading_piece_index
-                    ] = 2  # Being downloaded from peer.
+                    # Being downloaded from peer.
+                    pieces[peer_info.downloading_piece_index] = 2
 
         return pieces

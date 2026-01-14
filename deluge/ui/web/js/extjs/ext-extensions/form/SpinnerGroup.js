@@ -23,7 +23,7 @@ Ext.ux.form.SpinnerGroup = Ext.extend(Ext.form.CheckboxGroup, {
     colCfg: {},
 
     // private
-    onRender: function(ct, position) {
+    onRender: function (ct, position) {
         if (!this.el) {
             var panelCfg = {
                 cls: this.groupCls,
@@ -80,9 +80,8 @@ Ext.ux.form.SpinnerGroup = Ext.extend(Ext.form.CheckboxGroup, {
                 // Generate the column configs with the correct width setting
                 for (var i = 0; i < numCols; i++) {
                     var cc = Ext.apply({ items: [] }, colCfg);
-                    cc[
-                        this.columns[i] <= 1 ? 'columnWidth' : 'width'
-                    ] = this.columns[i];
+                    cc[this.columns[i] <= 1 ? 'columnWidth' : 'width'] =
+                        this.columns[i];
                     if (this.defaults) {
                         cc.defaults = Ext.apply(
                             cc.defaults || {},
@@ -131,14 +130,14 @@ Ext.ux.form.SpinnerGroup = Ext.extend(Ext.form.CheckboxGroup, {
                 }
             }
 
-            var fields = this.panel.findBy(function(c) {
+            var fields = this.panel.findBy(function (c) {
                 return c.isFormField;
             }, this);
 
             this.items = new Ext.util.MixedCollection();
             this.items.addAll(fields);
 
-            this.items.each(function(field) {
+            this.items.each(function (field) {
                 field.on('spin', this.onFieldChange, this);
                 field.on('change', this.onFieldChange, this);
             }, this);
@@ -159,45 +158,45 @@ Ext.ux.form.SpinnerGroup = Ext.extend(Ext.form.CheckboxGroup, {
         Ext.ux.form.SpinnerGroup.superclass.onRender.call(this, ct, position);
     },
 
-    onFieldChange: function(spinner) {
+    onFieldChange: function (spinner) {
         this.fireEvent('change', this, this.getValue());
     },
 
     initValue: Ext.emptyFn,
 
-    getValue: function() {
+    getValue: function () {
         var value = [this.items.getCount()];
-        this.items.each(function(item, i) {
+        this.items.each(function (item, i) {
             value[i] = Number(item.getValue());
         });
         return value;
     },
 
-    getRawValue: function() {
+    getRawValue: function () {
         var value = [this.items.getCount()];
-        this.items.each(function(item, i) {
+        this.items.each(function (item, i) {
             value[i] = Number(item.getRawValue());
         });
         return value;
     },
 
-    setValue: function(value) {
+    setValue: function (value) {
         if (!this.rendered) {
             this.value = value;
             this.lazyValueSet = true;
         } else {
-            this.items.each(function(item, i) {
+            this.items.each(function (item, i) {
                 item.setValue(value[i]);
             });
         }
     },
 
-    setRawValue: function(value) {
+    setRawValue: function (value) {
         if (!this.rendered) {
             this.rawValue = value;
             this.lazyRawValueSet = true;
         } else {
-            this.items.each(function(item, i) {
+            this.items.each(function (item, i) {
                 item.setRawValue(value[i]);
             });
         }

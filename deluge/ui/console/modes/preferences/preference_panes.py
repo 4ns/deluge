@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2011 Nick Lanham <nick@afternight.org>
 #
@@ -7,11 +6,9 @@
 # See LICENSE for more details.
 #
 
-from __future__ import unicode_literals
-
 import logging
 
-from deluge.common import is_ip
+from deluge.common import is_interface
 from deluge.decorators import overrides
 from deluge.i18n import get_languages
 from deluge.ui.client import client
@@ -94,11 +91,12 @@ class BasePreferencePane(BaseInputPane, BaseWindow, PopupsHandler):
                     )
                 elif ipt.name == 'listen_interface':
                     listen_interface = ipt.get_value().strip()
-                    if is_ip(listen_interface) or not listen_interface:
+                    if is_interface(listen_interface) or not listen_interface:
                         conf_dict['listen_interface'] = listen_interface
                 elif ipt.name == 'outgoing_interface':
                     outgoing_interface = ipt.get_value().strip()
-                    conf_dict['outgoing_interface'] = outgoing_interface
+                    if is_interface(outgoing_interface) or not outgoing_interface:
+                        conf_dict['outgoing_interface'] = outgoing_interface
                 elif ipt.name.startswith('proxy_'):
                     if ipt.name == 'proxy_type':
                         conf_dict.setdefault('proxy', {})['type'] = ipt.get_value()
@@ -111,13 +109,13 @@ class BasePreferencePane(BaseInputPane, BaseWindow, PopupsHandler):
                     elif ipt.name == 'proxy_port':
                         conf_dict.setdefault('proxy', {})['port'] = ipt.get_value()
                     elif ipt.name == 'proxy_hostnames':
-                        conf_dict.setdefault('proxy', {})[
-                            'proxy_hostnames'
-                        ] = ipt.get_value()
+                        conf_dict.setdefault('proxy', {})['proxy_hostnames'] = (
+                            ipt.get_value()
+                        )
                     elif ipt.name == 'proxy_peer_connections':
-                        conf_dict.setdefault('proxy', {})[
-                            'proxy_peer_connections'
-                        ] = ipt.get_value()
+                        conf_dict.setdefault('proxy', {})['proxy_peer_connections'] = (
+                            ipt.get_value()
+                        )
                     elif ipt.name == 'proxy_tracker_connections':
                         conf_dict.setdefault('proxy', {})[
                             'proxy_tracker_connections'
@@ -125,9 +123,9 @@ class BasePreferencePane(BaseInputPane, BaseWindow, PopupsHandler):
                 elif ipt.name == 'force_proxy':
                     conf_dict.setdefault('proxy', {})['force_proxy'] = ipt.get_value()
                 elif ipt.name == 'anonymous_mode':
-                    conf_dict.setdefault('proxy', {})[
-                        'anonymous_mode'
-                    ] = ipt.get_value()
+                    conf_dict.setdefault('proxy', {})['anonymous_mode'] = (
+                        ipt.get_value()
+                    )
                 else:
                     conf_dict[ipt.name] = ipt.get_value()
 
@@ -301,7 +299,7 @@ class NetworkPane(BasePreferencePane):
 
     @overrides(BasePreferencePane)
     def create_pane(self, core_conf, console_config):
-        self.add_header(_('Incomming Ports'))
+        self.add_header(_('Incoming Ports'))
         inrand = self.add_checked_input(
             'random_port',
             'Use Random Ports    Active Port: %d' % self.preferences.active_port,
@@ -723,11 +721,6 @@ class CachePane(BasePreferencePane):
         self.add_header(' %s' % _('Read'))
         self.add_info_field(
             'blocks_read', '  %s:' % _('Blocks Read'), status['disk.num_blocks_read']
-        )
-        self.add_info_field(
-            'blocks_read_hit',
-            '  %s:' % _('Blocks Read hit'),
-            status['disk.num_blocks_cache_hits'],
         )
         self.add_info_field('reads', '  %s:' % _('Reads'), status['disk.num_read_ops'])
         self.add_info_field(

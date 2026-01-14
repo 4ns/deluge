@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009 GazpachoKing <chase.sterling@gmail.com>
 # Copyright (C) 2011 Pedro Algarvio <pedro@algarvio.me>
@@ -13,22 +12,22 @@
 # See LICENSE for more details.
 #
 
-from __future__ import unicode_literals
-
 import logging
 import os
 import shutil
 from base64 import b64encode
 
 from twisted.internet import reactor
+from twisted.internet.defer import maybeDeferred
 from twisted.internet.task import LoopingCall, deferLater
+from twisted.python.failure import Failure
 
 import deluge.component as component
 import deluge.configmanager
 from deluge._libtorrent import lt
 from deluge.common import AUTH_LEVEL_ADMIN, is_magnet
 from deluge.core.rpcserver import export
-from deluge.error import AddTorrentError
+from deluge.error import AddTorrentError, InvalidTorrentError
 from deluge.event import DelugeEvent
 from deluge.plugins.pluginbase import CorePluginBase
 
@@ -81,7 +80,6 @@ def check_input(cond, message):
 
 class Core(CorePluginBase):
     def enable(self):
-
         # reduce typing, assigning some values to self...
         self.config = deluge.configmanager.ConfigManager('autoadd.conf', DEFAULT_PREFS)
         self.config.run_converter((0, 1), 2, self.__migrate_config_1_to_2)
@@ -150,7 +148,7 @@ class Core(CorePluginBase):
         try:
             with open(filename, file_mode) as _file:
                 filedump = _file.read()
-        except IOError as ex:
+        except OSError as ex:
             log.warning('Unable to open %s: %s', filename, ex)
             raise ex
 
@@ -159,7 +157,10 @@ class Core(CorePluginBase):
 
         # Get the info to see if any exceptions are raised
         if not magnet:
-            lt.torrent_info(lt.bdecode(filedump))
+            decoded_torrent = lt.bdecode(filedump)
+            if decoded_torrent is None:
+                raise InvalidTorrentError('Torrent file failed decoding.')
+            lt.torrent_info(decoded_torrent)
 
         return filedump
 
@@ -167,9 +168,9 @@ class Core(CorePluginBase):
         log.debug('Attempting to open %s for splitting magnets.', filename)
         magnets = []
         try:
-            with open(filename, 'r') as _file:
+            with open(filename) as _file:
                 magnets = list(filter(len, _file.read().splitlines()))
-        except IOError as ex:
+        except OSError as ex:
             log.warning('Unable to open %s: %s', filename, ex)
 
         if len(magnets) < 2:
@@ -194,7 +195,7 @@ class Core(CorePluginBase):
             try:
                 with open(mname, 'w') as _mfile:
                     _mfile.write(magnet)
-            except IOError as ex:
+            except OSError as ex:
                 log.warning('Unable to open %s: %s', mname, ex)
         return magnets
 
@@ -269,7 +270,7 @@ class Core(CorePluginBase):
 
             try:
                 filedump = self.load_torrent(filepath, magnet)
-            except (IOError, EOFError) as ex:
+            except (OSError, EOFError, RuntimeError, InvalidTorrentError) as ex:
                 # If torrent is invalid, keep track of it so can try again on the next pass.
                 # This catches torrent files that may not be fully saved to disk at load time.
                 log.debug('Torrent is invalid: %s', ex)
@@ -291,7 +292,7 @@ class Core(CorePluginBase):
                 if 'Label' in component.get('CorePluginManager').get_enabled_plugins():
                     if watchdir.get('label_toggle', True) and watchdir.get('label'):
                         label = component.get('CorePlugin.Label')
-                        if not watchdir['label'] in label.get_labels():
+                        if watchdir['label'] not in label.get_labels():
                             label.add(watchdir['label'])
                         try:
                             label.set_torrent(torrent_id, watchdir['label'])
@@ -325,6 +326,9 @@ class Core(CorePluginBase):
                     os.remove(filepath)
 
             def fail_torrent_add(err_msg, filepath, magnet):
+                if isinstance(err_msg, Failure):
+                    err_msg = err_msg.getErrorMessage()
+
                 # torrent handle is invalid and so is the magnet link
                 log.error(
                     'Cannot Autoadd %s: %s: %s',
@@ -337,15 +341,17 @@ class Core(CorePluginBase):
             try:
                 # The torrent looks good, so lets add it to the session.
                 if magnet:
-                    d = component.get('Core').add_torrent_magnet(
-                        filedump.strip(), options
+                    d = maybeDeferred(
+                        component.get('Core').add_torrent_magnet,
+                        filedump.strip(),
+                        options,
                     )
                 else:
                     d = component.get('Core').add_torrent_file_async(
                         filename, b64encode(filedump), options
                     )
-                    d.addCallback(on_torrent_added, filename, filepath)
-                    d.addErrback(fail_torrent_add, filepath, magnet)
+                d.addCallback(on_torrent_added, filename, filepath)
+                d.addErrback(fail_torrent_add, filepath, magnet)
             except AddTorrentError as ex:
                 fail_torrent_add(str(ex), filepath, magnet)
 

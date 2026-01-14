@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007, 2008 Andrew Resch <andrewresch@gmail.com>
 #
@@ -6,8 +5,6 @@
 # the additional special exception to link portions of this program with the OpenSSL library.
 # See LICENSE for more details.
 #
-
-from __future__ import unicode_literals
 
 import logging
 import os
@@ -30,8 +27,12 @@ from .common import build_menu_radio_list, get_logo
 from .dialogs import OtherDialog
 
 try:
-    require_version('AppIndicator3', '0.1')
-    from gi.repository import AppIndicator3
+    try:
+        require_version('AyatanaAppIndicator3', '0.1')
+        from gi.repository import AyatanaAppIndicator3 as AppIndicator3
+    except (ValueError, ImportError):
+        require_version('AppIndicator3', '0.1')
+        from gi.repository import AppIndicator3
 except (ValueError, ImportError):
     AppIndicator3 = None
 
@@ -143,7 +144,6 @@ class SystemTray(component.Component):
 
     def __start(self):
         if self.config['enable_system_tray']:
-
             if self.config['standalone']:
                 try:
                     self.hide_widget_list.remove('menuitem_quitdaemon')
@@ -234,13 +234,13 @@ class SystemTray(component.Component):
         if max_download_speed == -1:
             max_download_speed = _('Unlimited')
         else:
-            max_download_speed = '%s %s' % (max_download_speed, _('K/s'))
+            max_download_speed = '{} {}'.format(max_download_speed, _('K/s'))
         if max_upload_speed == -1:
             max_upload_speed = _('Unlimited')
         else:
-            max_upload_speed = '%s %s' % (max_upload_speed, _('K/s'))
+            max_upload_speed = '{} {}'.format(max_upload_speed, _('K/s'))
 
-        msg = '%s\n%s: %s (%s)\n%s: %s (%s)' % (
+        msg = '{}\n{}: {} ({})\n{}: {} ({})'.format(
             _('Deluge'),
             _('Down'),
             self.download_rate,

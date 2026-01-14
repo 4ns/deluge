@@ -14,7 +14,7 @@ Ext.namespace('Deluge.preferences');
  * @extends Ext.form.FormPanel
  */
 Deluge.preferences.Bandwidth = Ext.extend(Ext.form.FormPanel, {
-    constructor: function(config) {
+    constructor: function (config) {
         config = Ext.apply(
             {
                 border: false,
@@ -28,7 +28,7 @@ Deluge.preferences.Bandwidth = Ext.extend(Ext.form.FormPanel, {
         Deluge.preferences.Bandwidth.superclass.constructor.call(this, config);
     },
 
-    initComponent: function() {
+    initComponent: function () {
         Deluge.preferences.Bandwidth.superclass.initComponent.call(this);
 
         var om = deluge.preferences.getOptionsManager();
@@ -40,7 +40,7 @@ Deluge.preferences.Bandwidth = Ext.extend(Ext.form.FormPanel, {
             defaultType: 'spinnerfield',
             defaults: {
                 minValue: -1,
-                maxValue: 99999,
+                maxValue: 9999999,
             },
             style: 'margin-bottom: 0px; padding-bottom: 0px;',
             autoHeight: true,
@@ -117,8 +117,7 @@ Deluge.preferences.Bandwidth = Ext.extend(Ext.form.FormPanel, {
             border: false,
             title: '',
             defaultType: 'checkbox',
-            style:
-                'padding-top: 0px; padding-bottom: 5px; margin-top: 0px; margin-bottom: 0px;',
+            style: 'padding-top: 0px; padding-bottom: 5px; margin-top: 0px; margin-bottom: 0px;',
             autoHeight: true,
         });
         om.bind(

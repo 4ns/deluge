@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009 Andrew Resch <andrewresch@gmail.com>
 #
@@ -6,8 +5,6 @@
 # the additional special exception to link portions of this program with the OpenSSL library.
 # See LICENSE for more details.
 #
-
-from __future__ import unicode_literals
 
 import deluge.component as component
 import deluge.configmanager
@@ -106,8 +103,8 @@ class Command(BaseCommand):
 
         elif options.install:
             import os.path
-            from base64 import b64encode
             import shutil
+            from base64 import b64encode
 
             filepath = options.install
 

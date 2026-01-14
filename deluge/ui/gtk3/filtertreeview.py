@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2008 Martijn Voncken <mvoncken@gmail.com>
 #               2008 Andrew Resch <andrewresch@gmail.com>
@@ -8,8 +7,6 @@
 # the additional special exception to link portions of this program with the OpenSSL library.
 # See LICENSE for more details.
 #
-
-from __future__ import unicode_literals
 
 import logging
 import os
@@ -24,7 +21,7 @@ from deluge.common import TORRENT_STATE, decode_bytes, resource_filename
 from deluge.configmanager import ConfigManager
 from deluge.ui.client import client
 
-from .common import get_pixbuf, get_pixbuf_at_size
+from .common import get_pixbuf
 
 log = logging.getLogger(__name__)
 
@@ -89,21 +86,16 @@ class FilterTreeView(component.Component):
         self.treeview.set_headers_visible(False)
         self.treeview.set_level_indentation(-21)
         # Force theme to use expander-size so we don't cut out entries due to indentation hack.
-        Gtk.rc_parse_string(
-            """style "treeview-style" {GtkTreeView::expander-size = 7}
-                            class "GtkTreeView" style "treeview-style" """
-        )
+        provider = Gtk.CssProvider()
+        provider.load_from_data(b'* {-GtkTreeView-expander-size: 9;}')
+        context = self.treeview.get_style_context()
+        context.add_provider(provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 
         self.treeview.set_model(self.treestore)
         self.treeview.get_selection().connect('changed', self.on_selection_changed)
         self.create_model_filter()
 
         self.treeview.connect('button-press-event', self.on_button_press_event)
-
-        # colors using current theme.
-        style_ctx = component.get('MainWindow').window.get_style_context()
-        self.colour_background = style_ctx.get_background_color(Gtk.StateFlags.NORMAL)
-        self.colour_foreground = style_ctx.get_color(Gtk.StateFlags.NORMAL)
 
         # filtertree menu
         builder = Gtk.Builder()
@@ -229,7 +221,7 @@ class FilterTreeView(component.Component):
         label = decode_bytes(model.get_value(row, 2))
         count = model.get_value(row, 3)
 
-        # Supress Warning: g_object_set_qdata: assertion `G_IS_OBJECT (object)' failed
+        # Suppress Warning: g_object_set_qdata: assertion `G_IS_OBJECT (object)' failed
         original_filters = warnings.filters[:]
         warnings.simplefilter('ignore')
         try:
@@ -261,7 +253,7 @@ class FilterTreeView(component.Component):
             return get_pixbuf('%s16.png' % pix)
 
     def set_row_image(self, cat, value, filename):
-        pix = get_pixbuf_at_size(filename, 16)
+        pix = get_pixbuf(filename, size=16)
         row = self.filters[(cat, value)]
         self.treestore.set_value(row, 4, pix)
         return False

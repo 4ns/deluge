@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2008 Andrew Resch <andrewresch@gmail.com>
 #
@@ -6,8 +5,6 @@
 # the additional special exception to link portions of this program with the OpenSSL library.
 # See LICENSE for more details.
 #
-
-from __future__ import unicode_literals
 
 import logging
 import os.path
@@ -32,6 +29,7 @@ from .common import (
     icon_downloading,
     icon_seeding,
     load_pickled_state_file,
+    parse_ip_port,
     save_pickled_state_file,
 )
 from .torrentdetails import Tab
@@ -41,18 +39,12 @@ from .torrentview_data_funcs import (
     cell_data_speed_up,
 )
 
-try:
-    from future_builtins import zip
-except ImportError:
-    # Ignore on Py3.
-    pass
-
 log = logging.getLogger(__name__)
 
 
 class PeersTab(Tab):
     def __init__(self):
-        super(PeersTab, self).__init__('Peers', 'peers_tab', 'peers_tab_label')
+        super().__init__('Peers', 'peers_tab', 'peers_tab_label')
 
         self.peer_menu = self.main_builder.get_object('menu_peer_tab')
         component.get('MainWindow').connect_signals(self)
@@ -194,7 +186,7 @@ class PeersTab(Tab):
         if state['sort_id'] and state['sort_order'] is not None:
             self.liststore.set_sort_column_id(state['sort_id'], state['sort_order'])
 
-        for (index, column) in enumerate(self.listview.get_columns()):
+        for index, column in enumerate(self.listview.get_columns()):
             cname = column.get_title()
             if cname in state['columns']:
                 cstate = state['columns'][cname]
@@ -304,15 +296,15 @@ class PeersTab(Tab):
                     peer_ip = peer['ip']
                 else:
                     # This is an IPv6 address
-                    import socket
                     import binascii
+                    import socket
 
                     # Split out the :port
                     ip = ':'.join(peer['ip'].split(':')[:-1])
                     ip_int = int(
                         binascii.hexlify(socket.inet_pton(socket.AF_INET6, ip)), 16
                     )
-                    peer_ip = '[%s]:%s' % (ip, peer['ip'].split(':')[-1])
+                    peer_ip = '[{}]:{}'.format(ip, peer['ip'].split(':')[-1])
 
                 if peer['seed']:
                     icon = self.seed_pixbuf
@@ -376,19 +368,15 @@ class PeersTab(Tab):
         peer_dialog = builder.get_object('connect_peer_dialog')
         txt_ip = builder.get_object('txt_ip')
         response = peer_dialog.run()
+
         if response:
             value = txt_ip.get_text()
-            if value and ':' in value:
-                if ']' in value:
-                    # ipv6
-                    ip = value.split(']')[0][1:]
-                    port = value.split(']')[1][1:]
-                else:
-                    # ipv4
-                    ip = value.split(':')[0]
-                    port = value.split(':')[1]
-                if deluge.common.is_ip(ip):
-                    log.debug('adding peer %s to %s', value, self.torrent_id)
-                    client.core.connect_peer(self.torrent_id, ip, port)
+            ip, port = parse_ip_port(value)
+            if ip and port:
+                log.info('Adding peer IP: %s port: %s to %s', ip, port, self.torrent_id)
+                client.core.connect_peer(self.torrent_id, ip, port)
+            else:
+                log.error('Error parsing peer "%s"', value)
+
         peer_dialog.destroy()
         return True

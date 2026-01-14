@@ -1,9 +1,6 @@
-# -*- coding: utf-8 -*-
 #
 # This file is public domain.
 #
-
-from __future__ import unicode_literals
 
 # ISO 3166-1 country names and codes
 COUNTRIES = {
@@ -60,7 +57,7 @@ COUNTRIES = {
     'CD': _('Congo, The Democratic Republic of the'),
     'CK': _('Cook Islands'),
     'CR': _('Costa Rica'),
-    'CI': _('Cote d\'Ivoire'),
+    'CI': _("Cote d'Ivoire"),
     'HR': _('Croatia'),
     'CU': _('Cuba'),
     'CY': _('Cyprus'),
@@ -122,11 +119,11 @@ COUNTRIES = {
     'KZ': _('Kazakhstan'),
     'KE': _('Kenya'),
     'KI': _('Kiribati'),
-    'KP': _('Korea, Democratic People\'s Republic of'),
+    'KP': _("Korea, Democratic People's Republic of"),
     'KR': _('Korea, Republic of'),
     'KW': _('Kuwait'),
     'KG': _('Kyrgyzstan'),
-    'LA': _('Lao People\'s Democratic Republic'),
+    'LA': _("Lao People's Democratic Republic"),
     'LV': _('Latvia'),
     'LB': _('Lebanon'),
     'LS': _('Lesotho'),

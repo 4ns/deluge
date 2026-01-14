@@ -1,0 +1,105 @@
+name: Package
+
+on:
+  push:
+    tags:
+      - "deluge-*"
+      - "!deluge*-dev*"
+    branches:
+      - develop
+  pull_request:
+    types: [labeled, opened, synchronize, reopened]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Enter a tag or commit to package"
+        default: ""
+
+jobs:
+  windows_package:
+    runs-on: windows-2022
+    timeout-minutes: 30
+    if: (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'package'))
+    strategy:
+      matrix:
+        arch: [x64, x86]
+        python: ["3.9"]
+        libtorrent: [2.0.7, 1.2.19]
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Checkout Deluge source to subdir to enable packaging any tag/commit
+      - name: Checkout Deluge source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+          fetch-depth: 0
+          path: deluge_src
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python}}
+          architecture: ${{ matrix.arch }}
+          cache: pip
+
+      - name: Prepare pip
+        run: python -m pip install wheel setuptools==68.*
+
+      - name: Install GTK
+        run: |
+          $WebClient = New-Object System.Net.WebClient
+          $WebClient.DownloadFile("https://github.com/deluge-torrent/gvsbuild-release/releases/download/latest/gvsbuild-py${{ matrix.python }}-vs16-${{ matrix.arch }}.zip","C:\GTK.zip")
+          7z x C:\GTK.zip -oc:\GTK
+          echo "C:\GTK\release\lib" | Out-File -FilePath $env:GITHUB_PATH -Append
+          echo "C:\GTK\release\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+          echo "C:\GTK\release" | Out-File -FilePath $env:GITHUB_PATH -Append
+          python -m pip install --no-index --find-links="C:\GTK\release\python" pycairo PyGObject
+
+      - name: Install Python dependencies
+        # Pillow no longer provides 32-bit wheels for Windows
+        # so specify only-binary to install old version.
+        run: >
+          python -m pip install
+          --only-binary=pillow
+          twisted[tls]==22.8.0
+          libtorrent==${{ matrix.libtorrent }}
+          pyinstaller
+          pygame
+          -r requirements.txt
+
+      - name: Install Deluge
+        working-directory: deluge_src
+        run: |
+          python -m pip install .
+          python setup.py install_scripts
+
+      - name: Freeze Deluge
+        working-directory: packaging/win
+        run: |
+          pyinstaller --clean delugewin.spec --distpath freeze
+
+      - name: Verify Deluge exes
+        working-directory: packaging/win/freeze/Deluge/
+        run: |
+          deluge-debug.exe -v
+          deluged-debug.exe -v
+          deluge-web-debug.exe -v
+          deluge-console -v
+
+      - name: Make Deluge Installer
+        working-directory: ./packaging/win
+        run: |
+          python setup_nsis.py
+          makensis /Darch=${{ matrix.arch }} deluge-win-installer.nsi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deluge-py${{ matrix.python }}-lt${{ matrix.libtorrent }}-${{ matrix.arch }}
+          path: packaging/win/*.exe

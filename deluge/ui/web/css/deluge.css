@@ -6,6 +6,8 @@ body {
     border: 0 none;
     overflow: hidden;
     height: 100%;
+    color: black;
+    background: white;
 }
 
 input {
@@ -458,8 +460,16 @@ dl.singleline dd {
     background-image: url('../icons/add_url.png') !important;
 }
 
-.icon-add-magnet {
-    background-image: url('../icons/add_magnet.png') !important;
+.icon-magnet-add {
+    background-image: url('../icons/magnet_add.png') !important;
+}
+
+.icon-magnet-copy {
+    background-image: url('../icons/magnet_copy.png') !important;
+}
+
+.icon-magnet {
+    background-image: url('../icons/magnet.png') !important;
 }
 
 .icon-pause {

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007-2009 Andrew Resch <andrewresch@gmail.com>
 #
@@ -8,8 +7,6 @@
 #
 # pylint: disable=wrong-import-position
 
-from __future__ import division, unicode_literals
-
 import logging
 import os
 import signal
@@ -18,8 +15,8 @@ import time
 
 import gi  # isort:skip (Required before Gtk import).
 
-gi.require_version('Gtk', '3.0')  # NOQA: E402
-gi.require_version('Gdk', '3.0')  # NOQA: E402
+gi.require_version('Gtk', '3.0')
+gi.require_version('Gdk', '3.0')
 
 # isort:imports-thirdparty
 from gi.repository.GLib import set_prgname
@@ -32,7 +29,7 @@ try:
     # Install twisted reactor, before any other modules import reactor.
     reactor = gtk3reactor.install()
 except ReactorAlreadyInstalledError:
-    # Running unit tests so trial already installed a rector
+    # Running unit tests so already installed a rector
     from twisted.internet import reactor
 
 # isort:imports-firstparty
@@ -45,7 +42,7 @@ from deluge.common import (
     windows_check,
 )
 from deluge.configmanager import ConfigManager, get_config_dir
-from deluge.error import DaemonRunningError
+from deluge.error import DaemonRunningError, LibtorrentImportError
 from deluge.i18n import I18N_DOMAIN, set_language, setup_translation
 from deluge.ui.client import client
 from deluge.ui.hostlist import LOCALHOST
@@ -75,7 +72,7 @@ set_prgname('deluge')
 log = logging.getLogger(__name__)
 
 try:
-    from setproctitle import setproctitle, getproctitle
+    from setproctitle import getproctitle, setproctitle
 except ImportError:
 
     def setproctitle(title):
@@ -87,12 +84,13 @@ except ImportError:
 
 DEFAULT_PREFS = {
     'standalone': True,
+    'prefer_dark_theme': False,
     'interactive_add': True,
     'focus_add_dialog': True,
     'enable_system_tray': True,
     'close_to_tray': False,
     'start_in_tray': False,
-    'enable_appindicator': False,
+    'enable_appindicator': True,
     'lock_tray': False,
     'tray_password': '',
     'check_new_releases': True,
@@ -121,6 +119,7 @@ DEFAULT_PREFS = {
     'show_toolbar': True,
     'show_statusbar': True,
     'show_tabsbar': True,
+    'tabsbar_tab_pos': 'top',
     'tabsbar_position': 235,
     'sidebar_show_zero': False,
     'sidebar_show_trackers': True,
@@ -129,6 +128,7 @@ DEFAULT_PREFS = {
     'show_rate_in_title': False,
     'createtorrent.trackers': [],
     'show_piecesbar': False,
+    'detect_urls': True,
     'pieces_color_missing': [65535, 0, 0],
     'pieces_color_waiting': [4874, 56494, 0],
     'pieces_color_downloading': [65535, 55255, 0],
@@ -138,7 +138,7 @@ DEFAULT_PREFS = {
 }
 
 
-class GtkUI(object):
+class GtkUI:
     def __init__(self, args):
         # Setup gtkbuilder/glade translation
         setup_translation()
@@ -220,7 +220,7 @@ class GtkUI(object):
             menubar_osx(self, self.osxapp)
             self.osxapp.ready()
 
-        # Initalize the plugins
+        # Initialize the plugins
         self.plugins = PluginManager()
 
         # Show the connection manager
@@ -313,8 +313,8 @@ class GtkUI(object):
                 'A Deluge daemon (deluged) is already running.\n'
                 'To use Standalone mode, stop local daemon and restart Deluge.'
             )
-        except ImportError as ex:
-            if 'No module named libtorrent' in str(ex):
+        except LibtorrentImportError as ex:
+            if 'libtorrent library not found' in str(ex):
                 err_msg = _(
                     'Only Thin Client mode is available because libtorrent is not installed.\n'
                     'To use Standalone mode, please install libtorrent package.'
@@ -322,9 +322,16 @@ class GtkUI(object):
             else:
                 log.exception(ex)
                 err_msg = _(
-                    'Only Thin Client mode is available due to unknown Import Error.\n'
+                    'Only Thin Client mode is available due to libtorrent import error: %s\n'
                     'To use Standalone mode, please see logs for error details.'
-                )
+                ) % (str(ex))
+
+        except ImportError as ex:
+            log.exception(ex)
+            err_msg = _(
+                'Only Thin Client mode is available due to unknown Import Error.\n'
+                'To use Standalone mode, please see logs for error details.'
+            )
         except Exception as ex:
             log.exception(ex)
             err_msg = _(

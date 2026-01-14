@@ -19,7 +19,7 @@ Deluge.preferences.Daemon = Ext.extend(Ext.form.FormPanel, {
     header: false,
     layout: 'form',
 
-    initComponent: function() {
+    initComponent: function () {
         Deluge.preferences.Daemon.superclass.initComponent.call(this);
 
         var om = deluge.preferences.getOptionsManager();
@@ -40,7 +40,7 @@ Deluge.preferences.Daemon = Ext.extend(Ext.form.FormPanel, {
                 value: 58846,
                 decimalPrecision: 0,
                 minValue: -1,
-                maxValue: 99999,
+                maxValue: 65535,
             })
         );
 

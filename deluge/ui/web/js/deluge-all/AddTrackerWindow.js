@@ -10,9 +10,10 @@
 Ext.ns('Deluge');
 
 // Custom VType validator for tracker urls
-var trackerUrlTest = /(((^https?)|(^udp)):\/\/([\-\w]+\.)+\w{2,3}(\/[%\-\w]+(\.\w{2,})?)*(([\w\-\.\?\\\/+@&#;`~=%!]*)(\.\w{2,})?)*\/?)/i;
+var trackerUrlTest =
+    /(((^https?)|(^udp)):\/\/([\-\w]+\.)+\w{2,3}(\/[%\-\w]+(\.\w{2,})?)*(([\w\-\.\?\\\/+@&#;`~=%!]*)(\.\w{2,})?)*\/?)/i;
 Ext.apply(Ext.form.VTypes, {
-    trackerUrl: function(val, field) {
+    trackerUrl: function (val, field) {
         return trackerUrlTest.test(val);
     },
     trackerUrlText: 'Not a valid tracker url',
@@ -36,7 +37,7 @@ Deluge.AddTrackerWindow = Ext.extend(Ext.Window, {
     closeAction: 'hide',
     iconCls: 'x-deluge-edit-trackers',
 
-    initComponent: function() {
+    initComponent: function () {
         Deluge.AddTrackerWindow.superclass.initComponent.call(this);
 
         this.addButton(_('Cancel'), this.onCancelClick, this);
@@ -59,17 +60,14 @@ Deluge.AddTrackerWindow = Ext.extend(Ext.Window, {
         });
     },
 
-    onAddClick: function() {
-        var trackers = this.form
-            .getForm()
-            .findField('trackers')
-            .getValue();
+    onAddClick: function () {
+        var trackers = this.form.getForm().findField('trackers').getValue();
         trackers = trackers.split('\n');
 
         var cleaned = [];
         Ext.each(
             trackers,
-            function(tracker) {
+            function (tracker) {
                 if (Ext.form.VTypes.trackerUrl(tracker)) {
                     cleaned.push(tracker);
                 }
@@ -78,17 +76,11 @@ Deluge.AddTrackerWindow = Ext.extend(Ext.Window, {
         );
         this.fireEvent('add', cleaned);
         this.hide();
-        this.form
-            .getForm()
-            .findField('trackers')
-            .setValue('');
+        this.form.getForm().findField('trackers').setValue('');
     },
 
-    onCancelClick: function() {
-        this.form
-            .getForm()
-            .findField('trackers')
-            .setValue('');
+    onCancelClick: function () {
+        this.form.getForm().findField('trackers').setValue('');
         this.hide();
     },
 });
