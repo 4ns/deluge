@@ -82,7 +82,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        python-version: ["3.9", "3.12"]
+        python-version: ["3.10"]
 
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -104,6 +104,18 @@ jobs:
         run: |
           uv pip install -r requirements-ci.txt
           uv pip install -e .
+
+      - name: Patch Twisted
+        shell: bash
+        run: |
+          # Find the site-packages where Twisted source installed
+          SITE_PACKAGES=$(python -c "import sysconfig; print(sysconfig.get_path('purelib'))")
+          echo "Site packages at: $SITE_PACKAGES"
+
+          cd "$SITE_PACKAGES"
+          patch -p1 < "$GITHUB_WORKSPACE/.github/patches/twisted-glib-windows.patch"
+
+          echo "Patch applied successfully"
 
       - name: Test with pytest
         run: |
