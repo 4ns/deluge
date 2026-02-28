@@ -505,6 +505,13 @@ class Preferences(component.Component):
                 except KeyError:
                     if callable(value):
                         value = value()
+                    else:
+                        log.debug(
+                            'Config key %s not found in daemon config, disabling widget',
+                            key,
+                        )
+                        widget.set_sensitive(False)
+                        continue
             elif modifier:
                 value = {
                     'active': False,
