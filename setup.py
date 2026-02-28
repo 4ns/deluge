@@ -594,7 +594,7 @@ setup(
         'Operating System :: POSIX',
         'Topic :: Internet',
     ],
-    python_requires='>=3.9',
+    python_requires='>=3.10',
     license='GPLv3+',
     cmdclass=cmdclass,
     setup_requires=setup_requires,

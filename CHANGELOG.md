@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Removed
 
-- Dropped support for Python 3.8 or older. (Requires Python >= 3.9)
+- Dropped support for Python 3.8 or older. (Requires Python >= 3.10)
 
 ### Core
 

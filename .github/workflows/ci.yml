@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 10
     strategy:
       matrix:
-        python-version: ["3.9", "3.13"]
+        python-version: ["3.10", "3.13"]
 
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
