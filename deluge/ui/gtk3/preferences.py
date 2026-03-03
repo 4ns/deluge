@@ -498,7 +498,7 @@ class Preferences(component.Component):
 
             widget.set_sensitive(self.is_connected)
 
-            if self.is_connected:
+            if self.is_connected and modifier:
                 value = core_widgets[key][1]
                 try:
                     value = self.core_config[value]
