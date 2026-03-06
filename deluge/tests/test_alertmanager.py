@@ -114,9 +114,9 @@ class TestAlertManager:
         await component.stop(['AlertManager'])
 
         alert_thread.join(timeout=2)
-        assert (
-            not alert_thread.is_alive()
-        ), 'Alert-poller thread is still running after stop'
+        assert not alert_thread.is_alive(), (
+            'Alert-poller thread is still running after stop'
+        )
 
     def test_deregister_handler(self):
         def handler(alert): ...
