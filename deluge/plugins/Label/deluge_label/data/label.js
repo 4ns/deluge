@@ -20,7 +20,7 @@ Deluge.ux.preferences.LabelPage = Ext.extend(Ext.Panel, {
     layout: 'fit',
     border: false,
 
-    initComponent: function() {
+    initComponent: function () {
         Deluge.ux.preferences.LabelPage.superclass.initComponent.call(this);
         fieldset = this.add({
             xtype: 'fieldset',
@@ -54,8 +54,9 @@ Deluge.ux.AddLabelWindow = Ext.extend(Ext.Window, {
     title: _('Add Label'),
     width: 300,
     height: 100,
+    closeAction: 'hide',
 
-    initComponent: function() {
+    initComponent: function () {
         Deluge.ux.AddLabelWindow.superclass.initComponent.call(this);
         this.addButton(_('Cancel'), this.onCancelClick, this);
         this.addButton(_('Ok'), this.onOkClick, this);
@@ -75,7 +76,7 @@ Deluge.ux.AddLabelWindow = Ext.extend(Ext.Window, {
                     width: 220,
                     listeners: {
                         specialkey: {
-                            fn: function(field, e) {
+                            fn: function (field, e) {
                                 if (e.getKey() == 13) this.onOkClick();
                             },
                             scope: this,
@@ -86,14 +87,14 @@ Deluge.ux.AddLabelWindow = Ext.extend(Ext.Window, {
         });
     },
 
-    onCancelClick: function() {
+    onCancelClick: function () {
         this.hide();
     },
 
-    onOkClick: function() {
+    onOkClick: function () {
         var label = this.form.getForm().getValues().name;
         deluge.client.label.add(label, {
-            success: function() {
+            success: function () {
                 deluge.ui.update();
                 this.fireEvent('labeladded', label);
             },
@@ -102,17 +103,14 @@ Deluge.ux.AddLabelWindow = Ext.extend(Ext.Window, {
         this.hide();
     },
 
-    onHide: function(comp) {
+    onHide: function (comp) {
         Deluge.ux.AddLabelWindow.superclass.onHide.call(this, comp);
         this.form.getForm().reset();
     },
 
-    onShow: function(comp) {
+    onShow: function (comp) {
         Deluge.ux.AddLabelWindow.superclass.onShow.call(this, comp);
-        this.form
-            .getForm()
-            .findField('name')
-            .focus(false, 150);
+        this.form.getForm().findField('name').focus(false, 150);
     },
 });
 
@@ -124,8 +122,9 @@ Deluge.ux.LabelOptionsWindow = Ext.extend(Ext.Window, {
     title: _('Label Options'),
     width: 325,
     height: 240,
+    closeAction: 'hide',
 
-    initComponent: function() {
+    initComponent: function () {
         Deluge.ux.LabelOptionsWindow.superclass.initComponent.call(this);
         this.addButton(_('Cancel'), this.onCancelClick, this);
         this.addButton(_('Ok'), this.onOkClick, this);
@@ -149,8 +148,7 @@ Deluge.ux.LabelOptionsWindow = Ext.extend(Ext.Window, {
                                     xtype: 'fieldset',
                                     border: false,
                                     labelWidth: 1,
-                                    style:
-                                        'margin-bottom: 0px; padding-bottom: 0px;',
+                                    style: 'margin-bottom: 0px; padding-bottom: 0px;',
                                     items: [
                                         {
                                             xtype: 'checkbox',
@@ -219,8 +217,7 @@ Deluge.ux.LabelOptionsWindow = Ext.extend(Ext.Window, {
                                     xtype: 'fieldset',
                                     border: false,
                                     labelWidth: 1,
-                                    style:
-                                        'margin-bottom: 0px; padding-bottom: 0px;',
+                                    style: 'margin-bottom: 0px; padding-bottom: 0px;',
                                     items: [
                                         {
                                             xtype: 'checkbox',
@@ -261,8 +258,7 @@ Deluge.ux.LabelOptionsWindow = Ext.extend(Ext.Window, {
                                             width: 60,
                                             decimalPrecision: 2,
                                             incrementValue: 0.1,
-                                            style:
-                                                'position: relative; left: 100px',
+                                            style: 'position: relative; left: 100px',
                                             disabled: true,
                                         },
                                         {
@@ -286,8 +282,7 @@ Deluge.ux.LabelOptionsWindow = Ext.extend(Ext.Window, {
                                     xtype: 'fieldset',
                                     border: false,
                                     labelWidth: 1,
-                                    style:
-                                        'margin-bottom: 0px; padding-bottom: 0px;',
+                                    style: 'margin-bottom: 0px; padding-bottom: 0px;',
                                     items: [
                                         {
                                             xtype: 'checkbox',
@@ -340,8 +335,7 @@ Deluge.ux.LabelOptionsWindow = Ext.extend(Ext.Window, {
                                     xtype: 'fieldset',
                                     border: false,
                                     labelWidth: 1,
-                                    style:
-                                        'margin-bottom: 0px; padding-bottom: 0px;',
+                                    style: 'margin-bottom: 0px; padding-bottom: 0px;',
                                     items: [
                                         {
                                             xtype: 'checkbox',
@@ -383,18 +377,18 @@ Deluge.ux.LabelOptionsWindow = Ext.extend(Ext.Window, {
         });
     },
 
-    getLabelOptions: function() {
+    getLabelOptions: function () {
         deluge.client.label.get_options(this.label, {
             success: this.gotOptions,
             scope: this,
         });
     },
 
-    gotOptions: function(options) {
+    gotOptions: function (options) {
         this.form.getForm().setValues(options);
     },
 
-    show: function(label) {
+    show: function (label) {
         Deluge.ux.LabelOptionsWindow.superclass.show.call(this);
         this.label = label;
         this.setTitle(_('Label Options') + ': ' + this.label);
@@ -402,24 +396,23 @@ Deluge.ux.LabelOptionsWindow = Ext.extend(Ext.Window, {
         this.getLabelOptions();
     },
 
-    onCancelClick: function() {
+    onCancelClick: function () {
         this.hide();
     },
 
-    onOkClick: function() {
+    onOkClick: function () {
         var values = this.form.getForm().getFieldValues();
         if (values['auto_add_trackers']) {
-            values['auto_add_trackers'] = values['auto_add_trackers'].split(
-                '\n'
-            );
+            values['auto_add_trackers'] =
+                values['auto_add_trackers'].split('\n');
         }
         deluge.client.label.set_options(this.label, values);
         this.hide();
     },
 
-    onFieldChecked: function(field, checked) {
+    onFieldChecked: function (field, checked) {
         var fs = field.ownerCt.nextSibling();
-        fs.items.each(function(field) {
+        fs.items.each(function (field) {
             field.setDisabled(!checked);
         });
     },
@@ -434,7 +427,7 @@ Ext.ns('Deluge.plugins');
 Deluge.plugins.LabelPlugin = Ext.extend(Deluge.Plugin, {
     name: 'Label',
 
-    createMenu: function() {
+    createMenu: function () {
         this.labelMenu = new Ext.menu.Menu({
             items: [
                 {
@@ -460,7 +453,7 @@ Deluge.plugins.LabelPlugin = Ext.extend(Deluge.Plugin, {
         });
     },
 
-    setFilter: function(filter) {
+    setFilter: function (filter) {
         filter.show_zero = true;
 
         filter.list.on('contextmenu', this.onLabelContextMenu, this);
@@ -468,7 +461,7 @@ Deluge.plugins.LabelPlugin = Ext.extend(Deluge.Plugin, {
         this.filter = filter;
     },
 
-    updateTorrentMenu: function(states) {
+    updateTorrentMenu: function (states) {
         this.torrentMenu.removeAll(true);
         this.torrentMenu.addMenuItem({
             text: _('No Label'),
@@ -487,7 +480,7 @@ Deluge.plugins.LabelPlugin = Ext.extend(Deluge.Plugin, {
         }
     },
 
-    onDisable: function() {
+    onDisable: function () {
         deluge.sidebar.un('filtercreate', this.onFilterCreate);
         deluge.sidebar.un('afterfiltercreate', this.onAfterFilterCreate);
         delete Deluge.FilterPanel.templates.label;
@@ -497,7 +490,7 @@ Deluge.plugins.LabelPlugin = Ext.extend(Deluge.Plugin, {
         deluge.preferences.removePage(this.prefsPage);
     },
 
-    onEnable: function() {
+    onEnable: function () {
         this.prefsPage = deluge.preferences.addPage(
             new Deluge.ux.preferences.LabelPage()
         );
@@ -537,17 +530,17 @@ Deluge.plugins.LabelPlugin = Ext.extend(Deluge.Plugin, {
         this.registerTorrentStatus('label', _('Label'));
     },
 
-    onAfterFilterCreate: function(sidebar, filter) {
+    onAfterFilterCreate: function (sidebar, filter) {
         if (filter.filter != 'label') return;
         this.updateTorrentMenu(filter.getStates());
     },
 
-    onFilterCreate: function(sidebar, filter) {
+    onFilterCreate: function (sidebar, filter) {
         if (filter.filter != 'label') return;
         this.setFilter(filter);
     },
 
-    onLabelAddClick: function() {
+    onLabelAddClick: function () {
         if (!this.addWindow) {
             this.addWindow = new Deluge.ux.AddLabelWindow();
             this.addWindow.on('labeladded', this.onLabelAdded, this);
@@ -555,7 +548,7 @@ Deluge.plugins.LabelPlugin = Ext.extend(Deluge.Plugin, {
         this.addWindow.show();
     },
 
-    onLabelAdded: function(label) {
+    onLabelAdded: function (label) {
         var filter = deluge.sidebar.getFilter('label');
         var states = filter.getStates();
         var statesArray = [];
@@ -580,7 +573,7 @@ Deluge.plugins.LabelPlugin = Ext.extend(Deluge.Plugin, {
         this.updateTorrentMenu(states);
     },
 
-    onLabelContextMenu: function(dv, i, node, e) {
+    onLabelContextMenu: function (dv, i, node, e) {
         e.preventDefault();
         if (!this.labelMenu) this.createMenu();
         var r = dv.getRecord(node).get('filter');
@@ -595,7 +588,7 @@ Deluge.plugins.LabelPlugin = Ext.extend(Deluge.Plugin, {
         this.labelMenu.showAt(e.getXY());
     },
 
-    onLabelHeaderContextMenu: function(e, t) {
+    onLabelHeaderContextMenu: function (e, t) {
         e.preventDefault();
         if (!this.labelMenu) this.createMenu();
         this.labelMenu.items.get(1).setDisabled(true);
@@ -603,18 +596,18 @@ Deluge.plugins.LabelPlugin = Ext.extend(Deluge.Plugin, {
         this.labelMenu.showAt(e.getXY());
     },
 
-    onLabelOptionsClick: function() {
+    onLabelOptionsClick: function () {
         if (!this.labelOpts)
             this.labelOpts = new Deluge.ux.LabelOptionsWindow();
         this.labelOpts.show(this.filter.getState());
     },
 
-    onLabelRemoveClick: function() {
+    onLabelRemoveClick: function () {
         var state = this.filter.getState();
         deluge.client.label.remove(state, {
-            success: function() {
+            success: function () {
                 deluge.ui.update();
-                this.torrentMenu.items.each(function(item) {
+                this.torrentMenu.items.each(function (item) {
                     if (item.text != state) return;
                     this.torrentMenu.remove(item);
                     var i = item;
@@ -624,12 +617,12 @@ Deluge.plugins.LabelPlugin = Ext.extend(Deluge.Plugin, {
         });
     },
 
-    onTorrentMenuClick: function(item, e) {
+    onTorrentMenuClick: function (item, e) {
         var ids = deluge.torrents.getSelectedIds();
-        Ext.each(ids, function(id, i) {
+        Ext.each(ids, function (id, i) {
             if (ids.length == i + 1) {
                 deluge.client.label.set_torrent(id, item.label, {
-                    success: function() {
+                    success: function () {
                         deluge.ui.update();
                     },
                 });

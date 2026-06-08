@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2012 Bro <bro.development@gmail.com>
 # Copyright (C) 2018 Andrew Resch <andrewresch@gmail.com>
@@ -7,8 +6,6 @@
 # the additional special exception to link portions of this program with the OpenSSL library.
 # See LICENSE for more details.
 #
-
-from __future__ import unicode_literals
 
 import logging
 import struct
@@ -24,12 +21,12 @@ MESSAGE_HEADER_FORMAT = '!BI'
 MESSAGE_HEADER_SIZE = struct.calcsize(MESSAGE_HEADER_FORMAT)
 
 
-class DelugeTransferProtocol(Protocol, object):
+class DelugeTransferProtocol(Protocol):
     """
     Deluge RPC wire protocol.
 
-    Data messages are transfered with a header containing a protocol version
-    and the length of the data to be transfered (payload).
+    Data messages are transferred with a header containing a protocol version
+    and the length of the data to be transferred (payload).
 
     The format is::
 
@@ -51,12 +48,12 @@ class DelugeTransferProtocol(Protocol, object):
         """
         Transfer the data.
 
-        :param data: data to be transfered in a data structure serializable by rencode.
+        :param data: data to be transferred in a data structure serializable by rencode.
         """
         body = zlib.compress(rencode.dumps(data))
         body_len = len(body)
         message = struct.pack(
-            '{}{}s'.format(MESSAGE_HEADER_FORMAT, body_len),
+            f'{MESSAGE_HEADER_FORMAT}{body_len}s',
             PROTOCOL_VERSION,
             body_len,
             body,
@@ -68,8 +65,8 @@ class DelugeTransferProtocol(Protocol, object):
         """
         This method is called whenever data is received.
 
-        :param data: a message as transfered by transfer_message, or a part of such
-                     a messsage.
+        :param data: a message as transferred by transfer_message, or a part of such
+                     a message.
 
         Global variables:
             _buffer         - contains the data received
@@ -120,7 +117,7 @@ class DelugeTransferProtocol(Protocol, object):
 
     def _handle_complete_message(self, data):
         """
-        Handles a complete message as it is transfered on the network.
+        Handles a complete message as it is transferred on the network.
 
         :param data: a zlib compressed string encoded with rencode.
 

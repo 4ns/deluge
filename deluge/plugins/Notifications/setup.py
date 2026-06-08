@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009-2010 Pedro Algarvio <pedro@algarvio.me>
 #
@@ -17,7 +16,7 @@ from setuptools import find_packages, setup
 __plugin_name__ = 'Notifications'
 __author__ = 'Pedro Algarvio'
 __author_email__ = 'pedro@algarvio.me'
-__version__ = '0.3'
+__version__ = '0.4'
 __url__ = 'http://dev.deluge-torrent.org/'
 __license__ = 'GPLv3'
 __description__ = 'Plugin which provides notifications to Deluge.'

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007-2009 Andrew Resch <andrewresch@gmail.com>
 #
@@ -6,8 +5,6 @@
 # the additional special exception to link portions of this program with the OpenSSL library.
 # See LICENSE for more details.
 #
-
-from __future__ import unicode_literals
 
 import logging
 import os.path
@@ -20,11 +17,11 @@ from twisted.internet import reactor
 from twisted.internet.error import ReactorNotRunning
 
 import deluge.component as component
-from deluge.common import decode_bytes, fspeed, resource_filename
+from deluge.common import decode_bytes, fspeed, is_magnet, is_url, resource_filename
 from deluge.configmanager import ConfigManager
 from deluge.ui.client import client
 
-from .common import get_deluge_icon, windowing
+from .common import get_clipboard_text, get_deluge_icon, windowing
 from .dialogs import PasswordDialog
 from .ipcinterface import process_args
 
@@ -45,9 +42,8 @@ if windowing('X11'):
 log = logging.getLogger(__name__)
 
 
-class _GtkBuilderSignalsHolder(object):
+class _GtkBuilderSignalsHolder:
     def connect_signals(self, mapping_or_class):
-
         if isinstance(mapping_or_class, dict):
             for name, handler in mapping_or_class.items():
                 if hasattr(self, name):
@@ -75,6 +71,12 @@ class MainWindow(component.Component):
         component.Component.__init__(self, 'MainWindow', interval=2)
         self.config = ConfigManager('gtk3ui.conf')
         self.main_builder = Gtk.Builder()
+
+        # Set theme
+        Gtk.Settings.get_default().set_property(
+            'gtk-application-prefer-dark-theme',
+            self.config['prefer_dark_theme'],
+        )
 
         # Patch this GtkBuilder to avoid connecting signals from elsewhere
         #
@@ -108,6 +110,7 @@ class MainWindow(component.Component):
         self.window = self.main_builder.get_object('main_window')
         self.window.set_icon(get_deluge_icon())
         self.tabsbar_pane = self.main_builder.get_object('tabsbar_pane')
+        self.tabsbar_torrent_info = self.main_builder.get_object('torrent_info')
         self.sidebar_pane = self.main_builder.get_object('sidebar_pane')
 
         # Keep a list of components to pause and resume when changing window state.
@@ -131,6 +134,7 @@ class MainWindow(component.Component):
         self.window.connect('configure-event', self.on_window_configure_event)
         self.window.connect('delete-event', self.on_window_delete_event)
         self.window.connect('drag-data-received', self.on_drag_data_received_event)
+        self.window.connect('notify::is-active', self.on_focus)
         self.tabsbar_pane.connect(
             'notify::position', self.on_tabsbar_pane_position_event
         )
@@ -146,6 +150,9 @@ class MainWindow(component.Component):
         client.register_event_handler(
             'NewVersionAvailableEvent', self.on_newversionavailable_event
         )
+
+        self.previous_clipboard_text = ''
+        self.first_run = True
 
     def connect_signals(self, mapping_or_class):
         self.gtk_builder_signals_holder.connect_signals(mapping_or_class)
@@ -277,12 +284,14 @@ class MainWindow(component.Component):
     def save_position(self):
         self.config['window_maximized'] = self.window.props.is_maximized
         if not self.config['window_maximized'] and self.visible():
-            self.config['window_x_pos'], self.config[
-                'window_y_pos'
-            ] = self.window.get_position()
-            self.config['window_width'], self.config[
-                'window_height'
-            ] = self.window.get_size()
+            (
+                self.config['window_x_pos'],
+                self.config['window_y_pos'],
+            ) = self.window.get_position()
+            (
+                self.config['window_width'],
+                self.config['window_height'],
+            ) = self.window.get_size()
 
     def on_window_configure_event(self, widget, event):
         self.save_position()
@@ -326,6 +335,21 @@ class MainWindow(component.Component):
 
     def on_expose_event(self, widget, event):
         component.get('SystemTray').blink(False)
+
+    def on_focus(self, window, param):
+        if window.props.is_active and not self.first_run and self.config['detect_urls']:
+            text = get_clipboard_text()
+            if text == self.previous_clipboard_text:
+                return
+            self.previous_clipboard_text = text
+            if text and (
+                (is_url(text) and text.endswith('.torrent'))
+                or is_magnet(text)
+                and not component.get('MenuBar').magnet_copied()
+            ):
+                component.get('AddTorrentDialog').show()
+                component.get('AddTorrentDialog').on_button_url_clicked(window)
+        self.first_run = False
 
     def stop(self):
         self.window.set_title('Deluge')

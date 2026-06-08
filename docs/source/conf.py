@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Deluge documentation build configuration file
 #
@@ -10,13 +9,11 @@
 # All configuration values have a default value; values that are commented out
 # serve to show the default value.
 
+import builtins
 import os
 import sys
 from datetime import date
 
-from recommonmark.states import DummyStateMachine
-from recommonmark.transform import AutoStructify
-from six.moves import builtins
 from sphinx.ext import apidoc
 from sphinx.ext.autodoc import ClassDocumenter, bool_option
 
@@ -49,6 +46,9 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.napoleon',
     'sphinx.ext.coverage',
+    'sphinxcontrib.spelling',
+    'myst_parser',
+    'sphinx_autodoc_typehints',
 ]
 
 napoleon_include_init_with_doc = True
@@ -58,7 +58,6 @@ napoleon_use_rtype = False
 templates_path = ['_templates']
 
 # The suffix of source filenames.
-source_parsers = {'.md': 'recommonmark.parser.CommonMarkParser'}
 source_suffix = ['.rst', '.md']
 
 # The master toctree document.
@@ -85,8 +84,7 @@ today_fmt = '%B %d, %Y'
 
 # List of directories, relative to source directories, that shouldn't be searched
 # for source files.
-# exclude_dirs = []
-# exclude_patterns = []
+exclude_patterns = []
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 # default_role = None
@@ -105,6 +103,14 @@ today_fmt = '%B %d, %Y'
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
+
+# Options for spelling
+# --------------------
+spelling_show_suggestions = True
+spelling_word_list_filename = '../spelling_wordlist.txt'
+# Skip Deluge module rst files
+if 'spelling' in sys.argv or 'spellcheck_docs' in sys.argv:
+    exclude_patterns += ['modules']
 
 # Options for HTML output
 # -----------------------
@@ -132,7 +138,7 @@ html_css_files = [
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
-# html_favicon = None
+html_favicon = '../../deluge/ui/data/pixmaps/deluge.ico'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
@@ -213,45 +219,13 @@ latex_documents = [
 
 # Autodoc section
 # ---------------
-class Mock(object):
 
-    __all__ = []
-
-    def __init__(self, *args, **kwargs):
-        pass
-
-    def __call__(self, *args, **kwargs):
-        return ''
-
-    @classmethod
-    def __getattr__(cls, name):
-        if name in ('__file__', '__path__', 'xdg_config_home'):
-            return '/dev/null'
-        elif name[0] == name[0].upper():
-            mock_type = type(name, (), {})
-            mock_type.__module__ = __name__
-            return mock_type
-        else:
-            return Mock()
-
-    def __add__(self, other):
-        return other
-
-    def __or__(self, __):
-        return Mock()
-
-
-# Use custom mock as autodoc_mock_imports fails to handle these modules.
-MOCK_MODULES = ['deluge._libtorrent', 'xdg', 'xdg.BaseDirectory']
-
-for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = Mock()
-
-# Must add these for autodoc to import packages successully
+# Must add these for autodoc to import packages successfully
 builtins.__dict__['_'] = lambda x: x
 builtins.__dict__['_n'] = lambda s, p, n: s if n == 1 else p
 
 autodoc_mock_imports = [
+    'deluge._libtorrent',
     'twisted',
     'rencode',
     'OpenSSL',
@@ -287,19 +261,6 @@ def maybe_skip_member(app, what, name, obj, skip, options):
         return True
 
 
-# Monkey patch to fix recommonmark 0.4 doc reference issues.
-orig_run_role = DummyStateMachine.run_role
-
-
-def run_role(self, name, options=None, content=None):
-    if name == 'doc':
-        name = 'any'
-    return orig_run_role(self, name, options, content)
-
-
-DummyStateMachine.run_role = run_role
-
-
 # Run the sphinx-apidoc to create package/modules rst files for autodoc.
 def run_apidoc(__):
     cur_dir = os.path.abspath(os.path.dirname(__file__))
@@ -321,5 +282,3 @@ def run_apidoc(__):
 def setup(app):
     app.connect('builder-inited', run_apidoc)
     app.connect('autodoc-skip-member', maybe_skip_member)
-    app.add_config_value('recommonmark_config', {}, True)
-    app.add_transform(AutoStructify)

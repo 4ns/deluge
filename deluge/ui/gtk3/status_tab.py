@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2008 Andrew Resch <andrewresch@gmail.com>
 #
@@ -6,8 +5,6 @@
 # the additional special exception to link portions of this program with the OpenSSL library.
 # See LICENSE for more details.
 #
-
-from __future__ import division, unicode_literals
 
 import logging
 
@@ -32,7 +29,7 @@ log = logging.getLogger(__name__)
 
 class StatusTab(Tab):
     def __init__(self):
-        super(StatusTab, self).__init__('Status', 'status_tab', 'status_tab_label')
+        super().__init__('Status', 'status_tab', 'status_tab_label')
 
         self.config = ConfigManager('gtk3ui.conf')
 
@@ -110,7 +107,7 @@ class StatusTab(Tab):
             if decode_bytes(widget[0].get_text()) != txt:
                 widget[0].set_text(txt)
 
-        # Update progress bar seperately as it's a special case (not a label).
+        # Update progress bar separately as it's a special case (not a label).
         fraction = status['progress'] / 100
 
         if self.config['show_piecesbar']:

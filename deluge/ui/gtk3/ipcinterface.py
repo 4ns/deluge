@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2008-2009 Andrew Resch <andrewresch@gmail.com>
 #
@@ -7,14 +6,14 @@
 # See LICENSE for more details.
 #
 
-from __future__ import unicode_literals
-
 import logging
 import os
 import sys
 from base64 import b64encode
 from glob import glob
 from tempfile import mkstemp
+from urllib.parse import urlparse
+from urllib.request import url2pathname
 
 import rencode
 import twisted.internet.error
@@ -25,14 +24,6 @@ import deluge.component as component
 from deluge.common import decode_bytes, is_magnet, is_url, windows_check
 from deluge.configmanager import ConfigManager, get_config_dir
 from deluge.ui.client import client
-
-try:
-    from urllib.parse import urlparse
-    from urllib.request import url2pathname
-except ImportError:
-    # PY2 fallback
-    from urlparse import urlparse  # pylint: disable=ungrouped-imports
-    from urllib import url2pathname  # pylint: disable=ungrouped-imports
 
 log = logging.getLogger(__name__)
 
@@ -84,8 +75,8 @@ class IPCInterface(component.Component):
         if windows_check():
             # If we're on windows we need to check the global mutex to see if deluge is
             # already running.
-            import win32event
             import win32api
+            import win32event
             import winerror
 
             self.mutex = win32event.CreateMutex(None, False, 'deluge')

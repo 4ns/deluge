@@ -10,7 +10,7 @@
 Ext.ns('Deluge');
 
 /**
- * @class Deluge.EditTrackerWindow
+ * @class Deluge.EditTrackersWindow
  * @extends Ext.Window
  */
 Deluge.EditTrackersWindow = Ext.extend(Ext.Window, {
@@ -28,7 +28,7 @@ Deluge.EditTrackersWindow = Ext.extend(Ext.Window, {
     closeAction: 'hide',
     iconCls: 'x-deluge-edit-trackers',
 
-    initComponent: function() {
+    initComponent: function () {
         Deluge.EditTrackersWindow.superclass.initComponent.call(this);
 
         this.addButton(_('Cancel'), this.onCancelClick, this);
@@ -57,6 +57,7 @@ Deluge.EditTrackersWindow = Ext.extend(Ext.Window, {
                     header: _('Tracker'),
                     width: 0.9,
                     dataIndex: 'url',
+                    tpl: new Ext.XTemplate('{url:htmlEncode}'),
                 },
             ],
             columnSort: {
@@ -111,18 +112,18 @@ Deluge.EditTrackersWindow = Ext.extend(Ext.Window, {
         });
     },
 
-    onAddClick: function() {
+    onAddClick: function () {
         this.addWindow.show();
     },
 
-    onAddTrackers: function(trackers) {
+    onAddTrackers: function (trackers) {
         var store = this.list.getStore();
         Ext.each(
             trackers,
-            function(tracker) {
+            function (tracker) {
                 var duplicate = false,
                     heightestTier = -1;
-                store.each(function(record) {
+                store.each(function (record) {
                     if (record.get('tier') > heightestTier) {
                         heightestTier = record.get('tier');
                     }
@@ -143,27 +144,27 @@ Deluge.EditTrackersWindow = Ext.extend(Ext.Window, {
         );
     },
 
-    onCancelClick: function() {
+    onCancelClick: function () {
         this.hide();
     },
 
-    onEditClick: function() {
+    onEditClick: function () {
         var selected = this.list.getSelectedRecords()[0];
         if (!selected) return;
         this.editWindow.show(selected);
     },
 
-    onHide: function() {
+    onHide: function () {
         this.list.getStore().removeAll();
     },
 
-    onListNodeDblClicked: function(list, index, node, e) {
+    onListNodeDblClicked: function (list, index, node, e) {
         this.editWindow.show(this.list.getRecord(node));
     },
 
-    onOkClick: function() {
+    onOkClick: function () {
         var trackers = [];
-        this.list.getStore().each(function(record) {
+        this.list.getStore().each(function (record) {
             trackers.push({
                 tier: record.get('tier'),
                 url: record.get('url'),
@@ -178,34 +179,28 @@ Deluge.EditTrackersWindow = Ext.extend(Ext.Window, {
         this.hide();
     },
 
-    onRemoveClick: function() {
+    onRemoveClick: function () {
         // Remove from the grid
         var selected = this.list.getSelectedRecords()[0];
         if (!selected) return;
         this.list.getStore().remove(selected);
     },
 
-    onRequestComplete: function(status) {
+    onRequestComplete: function (status) {
         this.list.getStore().loadData(status);
         this.list.getStore().sort('tier', 'ASC');
     },
 
-    onSaveFail: function() {},
+    onSaveFail: function () {},
 
-    onSelect: function(list) {
+    onSelect: function (list) {
         if (list.getSelectionCount()) {
-            this.panel
-                .getBottomToolbar()
-                .items.get(4)
-                .enable();
+            this.panel.getBottomToolbar().items.get(4).enable();
         }
     },
 
-    onShow: function() {
-        this.panel
-            .getBottomToolbar()
-            .items.get(4)
-            .disable();
+    onShow: function () {
+        this.panel.getBottomToolbar().items.get(4).disable();
         var r = deluge.torrents.getSelected();
         this.torrentId = r.id;
         deluge.client.core.get_torrent_status(r.id, ['trackers'], {
@@ -214,7 +209,7 @@ Deluge.EditTrackersWindow = Ext.extend(Ext.Window, {
         });
     },
 
-    onDownClick: function() {
+    onDownClick: function () {
         var r = this.list.getSelectedRecords()[0];
         if (!r) return;
 
@@ -225,7 +220,7 @@ Deluge.EditTrackersWindow = Ext.extend(Ext.Window, {
         this.list.select(r.store.indexOf(r));
     },
 
-    onUpClick: function() {
+    onUpClick: function () {
         var r = this.list.getSelectedRecords()[0];
         if (!r) return;
 

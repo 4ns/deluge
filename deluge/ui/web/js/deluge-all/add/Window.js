@@ -15,15 +15,15 @@ Ext.ns('Deluge.add');
  * Base class for an add Window
  */
 Deluge.add.Window = Ext.extend(Ext.Window, {
-    initComponent: function() {
+    initComponent: function () {
         Deluge.add.Window.superclass.initComponent.call(this);
-        this.addEvents('beforeadd', 'add');
+        this.addEvents('beforeadd', 'add', 'addfailed');
     },
 
     /**
      * Create an id for the torrent before we have any info about it.
      */
-    createTorrentId: function() {
+    createTorrentId: function () {
         return new Date().getTime().toString();
     },
 });

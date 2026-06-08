@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007-2009 Andrew Resch <andrewresch@gmail.com>
 #
@@ -7,22 +6,22 @@
 # See LICENSE for more details.
 #
 
-from __future__ import unicode_literals
-
 import logging
+from os import environ
 
 from deluge.ui.ui import UI
 
 log = logging.getLogger(__name__)
+# Hide pygame community banner
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 
 
 # Keep this class in __init__.py to avoid the console having to import everything in gtkui.py
 class Gtk(UI):
-
     cmd_description = """GTK-based graphical user interface"""
 
     def __init__(self, *args, **kwargs):
-        super(Gtk, self).__init__(
+        super().__init__(
             'gtk', *args, description='Starts the Deluge GTK+ interface', **kwargs
         )
 
@@ -39,9 +38,10 @@ class Gtk(UI):
         )
 
     def start(self):
-        super(Gtk, self).start()
-        from .gtkui import GtkUI
+        super().start()
         import deluge.common
+
+        from .gtkui import GtkUI
 
         def run(options):
             try:

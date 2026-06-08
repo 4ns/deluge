@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009 GazpachoKing <chase.sterling@gmail.com>
 #
@@ -12,14 +11,12 @@
 # See LICENSE for more details.
 #
 
-from __future__ import unicode_literals
-
 import logging
 import os
 
 import gi  # isort:skip (Required before Gtk import).
 
-gi.require_version('Gtk', '3.0')  # NOQA: E402
+gi.require_version('Gtk', '3.0')
 
 # isort:imports-thirdparty
 from gi.repository import Gtk
@@ -41,7 +38,7 @@ class IncompatibleOption(Exception):
     pass
 
 
-class OptionsDialog(object):
+class OptionsDialog:
     spin_ids = ['max_download_speed', 'max_upload_speed', 'stop_ratio']
     spin_int_ids = ['max_upload_slots', 'max_connections']
     chk_ids = [
@@ -327,7 +324,7 @@ class OptionsDialog(object):
             dialogs.ErrorDialog(_('Incompatible Option'), str(ex), self.dialog).run()
 
     def on_error_show(self, result):
-        d = dialogs.ErrorDialog(_('Error'), result.value.exception_msg, self.dialog)
+        d = dialogs.ErrorDialog(_('Error'), result.value.message, self.dialog)
         result.cleanFailure()
         d.run()
 
@@ -453,7 +450,6 @@ class GtkUI(Gtk3PluginBase):
         self.treeView = Gtk.TreeView(self.store)
         self.treeView.connect('cursor-changed', self.on_listitem_activated)
         self.treeView.connect('row-activated', self.on_edit_button_clicked)
-        self.treeView.set_rules_hint(True)
 
         self.create_columns(self.treeView)
         sw.add(self.treeView)

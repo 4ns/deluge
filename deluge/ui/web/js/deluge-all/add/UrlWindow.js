@@ -22,7 +22,7 @@ Deluge.add.UrlWindow = Ext.extend(Deluge.add.Window, {
     bodyStyle: 'padding: 10px 5px;',
     iconCls: 'x-deluge-add-url-window-icon',
 
-    initComponent: function() {
+    initComponent: function () {
         Deluge.add.UrlWindow.superclass.initComponent.call(this);
         this.addButton(_('Add'), this.onAddClick, this);
 
@@ -50,7 +50,7 @@ Deluge.add.UrlWindow = Ext.extend(Deluge.add.Window, {
         this.cookieField.on('specialkey', this.onAdd, this);
     },
 
-    onAddClick: function(field, e) {
+    onAddClick: function (field, e) {
         if (
             (field.id == 'url' || field.id == 'cookies') &&
             e.getKey() != e.ENTER
@@ -72,6 +72,7 @@ Deluge.add.UrlWindow = Ext.extend(Deluge.add.Window, {
         } else {
             deluge.client.web.download_torrent_from_url(url, cookies, {
                 success: this.onDownload,
+                failure: this.onDownloadFailed,
                 scope: this,
                 torrentId: torrentId,
             });
@@ -82,16 +83,29 @@ Deluge.add.UrlWindow = Ext.extend(Deluge.add.Window, {
         this.fireEvent('beforeadd', torrentId, url);
     },
 
-    onDownload: function(filename, obj, resp, req) {
+    onDownload: function (filename, obj, resp, req) {
         deluge.client.web.get_torrent_info(filename, {
             success: this.onGotInfo,
+            failure: this.onDownloadFailed,
             scope: this,
             filename: filename,
             torrentId: req.options.torrentId,
         });
     },
 
-    onGotInfo: function(info, obj, response, request) {
+    onDownloadFailed: function (obj, resp, req) {
+        Ext.MessageBox.show({
+            title: _('Error'),
+            msg: _('Failed to download torrent'),
+            buttons: Ext.MessageBox.OK,
+            modal: false,
+            icon: Ext.MessageBox.ERROR,
+            iconCls: 'x-deluge-icon-error',
+        });
+        this.fireEvent('addfailed', req.options.torrentId);
+    },
+
+    onGotInfo: function (info, obj, response, request) {
         info['filename'] = request.options.filename;
         this.fireEvent('add', request.options.torrentId, info);
     },

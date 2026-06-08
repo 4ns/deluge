@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2009-2010 Pedro Algarvio <pedro@algarvio.me>
 #
@@ -11,8 +10,6 @@
 # the additional special exception to link portions of this program with the OpenSSL library.
 # See LICENSE for more details.
 #
-
-from __future__ import unicode_literals
 
 import logging
 from os.path import basename
@@ -42,7 +39,7 @@ except ImportError:
 
 try:
     require_version('Notify', '0.7')
-    from gi.repository import Notify
+    from gi.repository import GLib, Notify
 except (ValueError, ImportError):
     POPUP_AVAILABLE = False
 else:
@@ -174,15 +171,17 @@ class GtkUiNotifications(CustomNotifications):
         if not self.config['popup_enabled']:
             return defer.succeed(_('Popup notification is not enabled.'))
         if not POPUP_AVAILABLE:
-            return defer.fail(_('libnotify is not installed'))
+            err_msg = _('libnotify is not installed')
+            log.warning(err_msg)
+            return defer.fail(ImportError(err_msg))
 
         if Notify.init('Deluge'):
             self.note = Notify.Notification.new(title, message, 'deluge-panel')
-            self.note.set_hint('desktop-entry', 'deluge')
+            self.note.set_hint('desktop-entry', GLib.Variant.new_string('deluge'))
             if not self.note.show():
                 err_msg = _('Failed to popup notification')
                 log.warning(err_msg)
-                return defer.fail(err_msg)
+                return defer.fail(Exception(err_msg))
         return defer.succeed(_('Notification popup shown'))
 
     def __play_sound(self, sound_path=''):
@@ -191,7 +190,7 @@ class GtkUiNotifications(CustomNotifications):
         if not SOUND_AVAILABLE:
             err_msg = _('pygame is not installed')
             log.warning(err_msg)
-            return defer.fail(err_msg)
+            return defer.fail(ImportError(err_msg))
 
         pygame.init()
         try:
@@ -203,7 +202,7 @@ class GtkUiNotifications(CustomNotifications):
         except pygame.error as ex:
             err_msg = _('Sound notification failed %s') % ex
             log.warning(err_msg)
-            return defer.fail(err_msg)
+            return defer.fail(ex)
         else:
             msg = _('Sound notification Success')
             log.info(msg)

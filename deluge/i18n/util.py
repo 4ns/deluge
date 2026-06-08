@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007,2008 Andrew Resch <andrewresch@gmail.com>
 #
@@ -7,8 +6,7 @@
 # See LICENSE for more details.
 #
 
-from __future__ import unicode_literals
-
+import builtins
 import ctypes
 import gettext
 import locale
@@ -16,8 +14,6 @@ import logging
 import os
 import sys
 from glob import glob
-
-from six.moves import builtins
 
 import deluge.common
 
@@ -55,7 +51,7 @@ def get_languages():
             name = LANGUAGES[lang_code]
         lang.append([lang_code, _(name)])
 
-    lang = sorted(lang, key=lambda l: l[1])
+    lang = sorted(lang, key=lambda k: k[1])
     return lang
 
 
@@ -69,18 +65,23 @@ def set_language(lang):
     :param lang: the language, e.g. "en", "de" or "en_GB"
     :type lang: str
     """
+    if not lang:
+        os.environ.pop('LANGUAGE', None)
+        os.environ.pop('LANG', None)
+        return
+
     # Necessary to set these environment variables for GtkBuilder
     deluge.common.set_env_variable('LANGUAGE', lang)  # Windows/Linux
     deluge.common.set_env_variable('LANG', lang)  # For OSX
 
-    translations_path = get_translations_path()
     try:
-        ro = gettext.translation(
-            'deluge', localedir=translations_path, languages=[lang]
+        translation = gettext.translation(
+            'deluge', localedir=get_translations_path(), languages=[lang]
         )
-        ro.install()
-    except IOError as ex:
-        log.warning('IOError when loading translations: %s', ex)
+    except OSError:
+        log.warning('Unable to find translation (.mo) to set language: %s', lang)
+    else:
+        translation.install()
 
 
 def setup_mock_translation(warn_msg=None):
@@ -108,38 +109,42 @@ def setup_translation():
             locale.textdomain(I18N_DOMAIN)
 
         gettext.bindtextdomain(I18N_DOMAIN, translations_path)
-        gettext.bind_textdomain_codeset(I18N_DOMAIN, 'UTF-8')
         gettext.textdomain(I18N_DOMAIN)
 
-        # Workaround for Python 2 unicode gettext (keyword removed in Py3).
-        kwargs = {} if not deluge.common.PY2 else {'unicode': True}
-
-        gettext.install(I18N_DOMAIN, translations_path, names='ngettext', **kwargs)
+        gettext.install(I18N_DOMAIN, translations_path, names=['ngettext'])
         builtins.__dict__['_n'] = builtins.__dict__['ngettext']
+
+        def load_libintl(libintls):
+            errors = []
+            libintl = None
+            for library in libintls:
+                try:
+                    libintl = ctypes.cdll.LoadLibrary(library)
+                except OSError as ex:
+                    errors.append(str(ex))
+                else:
+                    break
+
+            if not libintl:
+                log.debug(
+                    'Unable to initialize gettext/locale:\n  %s', '\n  '.join(errors)
+                )
+                setup_mock_translation()
+                return
+
+            return libintl
 
         libintl = None
         if deluge.common.windows_check():
-            for intl in ('libintl-8.dll', 'intl.dll'):
-                try:
-                    libintl = ctypes.cdll.LoadLibrary(intl)
-                except OSError as ex:
-                    exception = ex
-                else:
-                    break
-                finally:
-                    if not libintl:
-                        log.error('Unable to initialize gettext/locale!')
-                        log.error(exception)
-                        setup_mock_translation()
+            libintl = load_libintl(['libintl-8.dll', 'intl.dll'])
         elif deluge.common.osx_check():
-            libintl = ctypes.cdll.LoadLibrary('libintl.dylib')
+            libintl = load_libintl(['libintl.8.dylib', 'libintl.dylib'])
 
         if libintl:
             libintl.bindtextdomain(
                 I18N_DOMAIN, translations_path.encode(sys.getfilesystemencoding())
             )
             libintl.textdomain(I18N_DOMAIN)
-            libintl.bind_textdomain_codeset(I18N_DOMAIN, 'UTF-8')
             libintl.gettext.restype = ctypes.c_char_p
 
     except Exception as ex:

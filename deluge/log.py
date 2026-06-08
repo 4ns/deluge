@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2007 Andrew Resch <andrewresch@gmail.com>
 # Copyright (C) 2010 Pedro Algarvio <pedro@algarvio.me>
@@ -9,7 +8,6 @@
 #
 
 """Logging functions"""
-from __future__ import unicode_literals
 
 import inspect
 import logging
@@ -17,6 +15,8 @@ import logging.handlers
 import os
 import sys
 
+from incremental import Version
+from twisted import version as twisted_version
 from twisted.internet import defer
 from twisted.python.log import PythonLoggingObserver
 
@@ -37,7 +37,7 @@ MAX_LOGGER_NAME_LENGTH = 10
 
 class Logging(LoggingLoggerClass):
     def __init__(self, logger_name):
-        super(Logging, self).__init__(logger_name)
+        super().__init__(logger_name)
 
         # This makes module name padding increase to the biggest module name
         # so that logs keep readability.
@@ -52,43 +52,35 @@ class Logging(LoggingLoggerClass):
                     )
                 )
 
-    @defer.inlineCallbacks
     def garbage(self, msg, *args, **kwargs):
-        yield LoggingLoggerClass.log(self, 1, msg, *args, **kwargs)
+        LoggingLoggerClass.log(self, 1, msg, *args, **kwargs)
 
-    @defer.inlineCallbacks
     def trace(self, msg, *args, **kwargs):
-        yield LoggingLoggerClass.log(self, 5, msg, *args, **kwargs)
+        LoggingLoggerClass.log(self, 5, msg, *args, **kwargs)
 
-    @defer.inlineCallbacks
     def debug(self, msg, *args, **kwargs):
-        yield LoggingLoggerClass.debug(self, msg, *args, **kwargs)
+        LoggingLoggerClass.debug(self, msg, *args, **kwargs)
 
-    @defer.inlineCallbacks
     def info(self, msg, *args, **kwargs):
-        yield LoggingLoggerClass.info(self, msg, *args, **kwargs)
+        LoggingLoggerClass.info(self, msg, *args, **kwargs)
 
-    @defer.inlineCallbacks
     def warning(self, msg, *args, **kwargs):
-        yield LoggingLoggerClass.warning(self, msg, *args, **kwargs)
+        LoggingLoggerClass.warning(self, msg, *args, **kwargs)
 
     warn = warning
 
-    @defer.inlineCallbacks
     def error(self, msg, *args, **kwargs):
-        yield LoggingLoggerClass.error(self, msg, *args, **kwargs)
+        LoggingLoggerClass.error(self, msg, *args, **kwargs)
 
-    @defer.inlineCallbacks
     def critical(self, msg, *args, **kwargs):
-        yield LoggingLoggerClass.critical(self, msg, *args, **kwargs)
+        LoggingLoggerClass.critical(self, msg, *args, **kwargs)
 
-    @defer.inlineCallbacks
     def exception(self, msg, *args, **kwargs):
-        yield LoggingLoggerClass.exception(self, msg, *args, **kwargs)
+        LoggingLoggerClass.exception(self, msg, *args, **kwargs)
 
-    def findCaller(self, stack_info=False):  # NOQA: N802
+    def findCaller(self, *args, **kwargs):  # NOQA: N802
         f = logging.currentframe().f_back
-        rv = '(unknown file)', 0, '(unknown function)'
+        rv = ('(unknown file)', 0, '(unknown function)', None)
         while hasattr(f, 'f_code'):
             co = f.f_code
             filename = os.path.normcase(co.co_filename)
@@ -98,10 +90,7 @@ class Logging(LoggingLoggerClass):
             ):
                 f = f.f_back
                 continue
-            if common.PY2:
-                rv = (filename, f.f_lineno, co.co_name)
-            else:
-                rv = (filename, f.f_lineno, co.co_name, None)
+            rv = (co.co_filename, f.f_lineno, co.co_name, None)
             break
         return rv
 
@@ -159,11 +148,14 @@ def setup_logger(
             handler_cls = getattr(
                 logging.handlers, 'WatchedFileHandler', logging.FileHandler
             )
-        handler = handler_cls(filename, mode=filemode, encoding='utf-8')
+        try:
+            handler = handler_cls(filename, mode=filemode, encoding='utf-8')
+        except FileNotFoundError:
+            handler = logging.StreamHandler(stream=output_stream)
+            log = logging.getLogger(__name__)
+            log.error(f'Unable to write to log file `{filename}`')
     else:
         handler = logging.StreamHandler(stream=output_stream)
-
-    handler.setLevel(level)
 
     formatter = logging.Formatter(
         DEFAULT_LOGGING_FORMAT % MAX_LOGGER_NAME_LENGTH, datefmt='%H:%M:%S'
@@ -180,7 +172,8 @@ def setup_logger(
         root_logger.addHandler(handler)
     root_logger.setLevel(level)
 
-    if twisted_observer:
+    # Issue fixed in Twisted 18.9.0 https://twistedmatrix.com/trac/ticket/7927
+    if twisted_observer and twisted_version < Version('Twisted', 18, 9, 0):
         twisted_logging = TwistedLoggingObserver()
         twisted_logging.start()
 
@@ -204,13 +197,18 @@ class TwistedLoggingObserver(PythonLoggingObserver):
             getattr(LoggingLoggerClass, event_dict['log_level'].name)(
                 log, fmt % (event_dict)
             )
-        else:
+            return
+
+        try:
             PythonLoggingObserver.emit(self, event_dict)
+        except TypeError:
+            # Ignore logging args problem with Python 3.8 and Twisted <= 19
+            pass
 
 
 def tweak_logging_levels():
     """This function allows tweaking the logging levels for all or some loggers.
-    This is mostly usefull for developing purposes hence the contents of the
+    This is mostly useful for developing purposes hence the contents of the
     file are NOT like regular deluge config file's.
 
     To use is, create a file named "logging.conf" on your Deluge's config dir
@@ -235,7 +233,7 @@ def tweak_logging_levels():
     log.warning(
         'logging.conf found! tweaking logging levels from %s', logging_config_file
     )
-    with open(logging_config_file, 'r') as _file:
+    with open(logging_config_file) as _file:
         for line in _file:
             if line.strip().startswith('#'):
                 continue
@@ -306,7 +304,7 @@ Triggering code:
 """
 
 
-class _BackwardsCompatibleLOG(object):
+class _BackwardsCompatibleLOG:
     def __getattribute__(self, name):
         import warnings
 
